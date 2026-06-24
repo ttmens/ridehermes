@@ -1,0 +1,39 @@
+server:
+  port: 8686
+  mode: debug
+
+database:
+  type: sqlite  # sqlite or mysql
+  host: 127.0.0.1
+  port: 3306
+  user: root
+  password: ""
+  dbname: ridehermes.db  # SQLite 文件路径
+  max_idle_conns: 10
+  max_open_conns: 100
+
+redis:
+  addr: 127.0.0.1:6379
+  password: ""
+  db: 0
+
+jwt:
+  secret: "ride-hermes-dev-secret-key-2026"
+  access_expire: 7200
+  refresh_expire: 604800
+
+ai_service:
+  addr: http://localhost:8001
+  timeout: 30
+
+dispatch:
+  response_timeout: 15
+  heartbeat_interval: 30
+  location_save_interval: 10
+
+amap:
+  api_key: "473c3c82dc0cd2f3ecf99eb3d0babeaa"
+
+log:
+  level: info
+  format: json

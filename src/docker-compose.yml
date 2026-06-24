@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ridehermes-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ridehermes123
+      MYSQL_DATABASE: ride_hermes
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./ride-hermes/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prisehermes123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: ridehermes-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./ride-hermes
+      dockerfile: Dockerfile
+    container_name: ridehermes-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - GIN_MODE=debug
+    # Override config for Docker networking
+    command:
+      - /bin/sh
+      - -c
+      - |
+        sed -i 's/host: localhost/host: mysql/' /configs/config.yaml
+        sed -i 's/addr: localhost:6379/addr: redis:6379/' /configs/config.yaml
+        sed -i 's/password: ""/password: "ridehermes123"/' /configs/config.yaml
+        /server
+
+  # Optional: AI service
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: ridehermes-ai
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    depends_on:
+      - redis
+    profiles:
+      - ai
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - AMAP_API_KEY=${AMAP_API_KEY:-}
+
+volumes:
+  mysql_data:
+  redis_data:

@@ -1,0 +1,7 @@
+DROP TABLE IF EXISTS ai_conversations;
+DROP TABLE IF EXISTS dispatch_logs;
+DROP TABLE IF EXISTS locations;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS vehicles;
+DROP TABLE IF EXISTS drivers;
+DROP TABLE IF EXISTS users;

@@ -1,0 +1,130 @@
+示例1 - 完整信息（含出发时间）：
+输入：明天早上8点从望京SOHO去首都机场T3，叫快车
+输出：
+```json
+{
+    "intent_type": "ride_booking",
+    "pickup": {"address": "望京SOHO"},
+    "dropoff": {"address": "首都机场T3"},
+    "car_type": 1,
+    "departure_time": "2026-05-18T08:00:00",
+    "departure_desc": "明天早上8点",
+    "missing_fields": [],
+    "response_text": "好的，从望京SOHO到首都机场T3，明天早上8点出发，快车。请确认是否叫车？"
+}
+```
+
+示例2 - 完整信息（立即出发）：
+输入：从望京SOHO去中关村软件园
+输出：
+```json
+{
+    "intent_type": "ride_booking",
+    "pickup": {"address": "望京SOHO"},
+    "dropoff": {"address": "中关村软件园"},
+    "car_type": 1,
+    "departure_time": null,
+    "departure_desc": null,
+    "missing_fields": [],
+    "response_text": "好的，从望京SOHO到中关村软件园，现在出发，快车。请确认是否叫车？"
+}
+```
+
+示例3 - 缺少上车点和出发时间：
+输入：我要去机场
+输出：
+```json
+{
+    "intent_type": "ride_booking",
+    "pickup": null,
+    "dropoff": {"address": "机场"},
+    "car_type": 1,
+    "departure_time": null,
+    "departure_desc": null,
+    "missing_fields": ["pickup", "departure_time"],
+    "response_text": "好的，去机场。请问您从哪里出发？什么时间出发呢？"
+}
+```
+
+示例4 - 特殊地址：
+输入：回家
+输出：
+```json
+{
+    "intent_type": "ride_booking",
+    "pickup": {"address": "current_location"},
+    "dropoff": {"address": "家"},
+    "car_type": 1,
+    "departure_time": null,
+    "departure_desc": "现在出发",
+    "missing_fields": [],
+    "response_text": "好的，从当前位置到家，现在出发，快车。请确认是否叫车？"
+}
+```
+
+示例5 - 问候：
+输入：你好
+输出：
+```json
+{
+    "intent_type": "greeting",
+    "pickup": null,
+    "dropoff": null,
+    "car_type": null,
+    "departure_time": null,
+    "departure_desc": null,
+    "missing_fields": [],
+    "response_text": "您好！我是小赫，您的出行助手。请告诉我您从哪里出发，要去哪里？"
+}
+```
+
+示例6 - 多轮对话：修改车型（保持上下车点不变）
+上文：用户已说"从望京SOHO去中关村软件园"，AI已确认
+输入：帮我换成专车
+输出：
+```json
+{
+    "intent_type": "ride_booking",
+    "pickup": {"address": "望京SOHO"},
+    "dropoff": {"address": "中关村软件园"},
+    "car_type": 2,
+    "departure_time": null,
+    "departure_desc": null,
+    "missing_fields": [],
+    "response_text": "好的，已改为专车。从望京SOHO到中关村软件园，现在出发。请确认是否叫车？"
+}
+```
+
+示例7 - 多轮对话：补充出发时间（保持上下车点和车型不变）
+上文：用户已说"从望京SOHO去中关村软件园，专车"，AI已确认
+输入：明天早上8点出发
+输出：
+```json
+{
+    "intent_type": "ride_booking",
+    "pickup": {"address": "望京SOHO"},
+    "dropoff": {"address": "中关村软件园"},
+    "car_type": 2,
+    "departure_time": "2026-05-20T08:00:00",
+    "departure_desc": "明天早上8点",
+    "missing_fields": [],
+    "response_text": "好的，从望京SOHO到中关村软件园，专车，明天早上8点出发。请确认是否叫车？"
+}
+```
+
+示例8 - 多轮对话：修改上车点（保持其他信息不变）
+上文：用户已说"从望京SOHO去中关村软件园"，AI已确认
+输入：不对，从三里屯出发
+输出：
+```json
+{
+    "intent_type": "ride_booking",
+    "pickup": {"address": "三里屯"},
+    "dropoff": {"address": "中关村软件园"},
+    "car_type": 1,
+    "departure_time": null,
+    "departure_desc": null,
+    "missing_fields": [],
+    "response_text": "好的，已修改上车点为三里屯。从三里屯到中关村软件园，现在出发，快车。请确认是否叫车？"
+}
+```

@@ -1,0 +1,28 @@
+[project]
+name = "ride-hermes-ai"
+version = "0.1.0"
+description = "RideHermes AI Agent Service - voice recognition & intent parsing"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.1.0",
+    "redis>=5.0.0",
+    "openai>=1.12.0",
+    "httpx>=0.26.0",
+    "structlog>=24.1.0",
+    "python-multipart>=0.0.9",
+    "faster-whisper>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "httpx>=0.26.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
