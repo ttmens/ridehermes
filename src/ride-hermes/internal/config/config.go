@@ -41,9 +41,9 @@ type RedisConfig struct {
 }
 
 type JWTConfig struct {
-	Secret        string `yaml:"secret"`
-	AccessExpire  int    `yaml:"access_expire"`
-	RefreshExpire int    `yaml:"refresh_expire"`
+	Secret         string `yaml:"secret"`
+	AccessExpire   int    `yaml:"access_expire"`
+	RefreshExpire  int    `yaml:"refresh_expire"`
 }
 
 type AIServiceConfig struct {
@@ -66,86 +66,44 @@ type LogConfig struct {
 	Format string `yaml:"format"`
 }
 
-// getEnv 获取环境变量，支持默认值
-func getEnv(key, defaultVal string) string {
-	if val := os.Getenv(key); val != "" {
-		return val
-	}
-	return defaultVal
-}
-
-// getEnvInt 获取整数环境变量
-func getEnvInt(key string, defaultVal int) int {
-	if val := os.Getenv(key); val != "" {
-		if i, err := strconv.Atoi(val); err == nil {
-			return i
-		}
-	}
-	return defaultVal
-}
-
-func Load(path string) (*Config, error) {
+func LoadConfig(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg := &Config{}
-	if err := yaml.Unmarshal(data, cfg); err != nil {
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, err
 	}
 
-	// 环境变量覆盖（优先级高于配置文件）
-	// 服务器配置
-	cfg.Server.Port = getEnvInt("SERVER_PORT", cfg.Server.Port)
-	cfg.Server.Mode = getEnv("GIN_MODE", cfg.Server.Mode)
-
-	// 数据库配置
-	cfg.Database.Type = getEnv("DB_TYPE", cfg.Database.Type)
-	cfg.Database.Host = getEnv("DB_HOST", cfg.Database.Host)
-	cfg.Database.Port = getEnvInt("DB_PORT", cfg.Database.Port)
-	cfg.Database.User = getEnv("DB_USER", cfg.Database.User)
-	cfg.Database.Password = getEnv("DB_PASSWORD", cfg.Database.Password)
-	cfg.Database.DBName = getEnv("DB_NAME", cfg.Database.DBName)
-
-	// Redis 配置
-	cfg.Redis.Addr = getEnv("REDIS_ADDR", cfg.Redis.Addr)
-	cfg.Redis.Password = getEnv("REDIS_PASSWORD", cfg.Redis.Password)
-
-	// JWT 配置（生产环境必须通过环境变量设置）
-	cfg.JWT.Secret = getEnv("JWT_SECRET", cfg.JWT.Secret)
-
-	// AI 服务配置
-	cfg.AIService.Addr = getEnv("AI_SERVICE_ADDR", cfg.AIService.Addr)
-
-	// 高德地图 API Key
-	cfg.Amap.APIKey = getEnv("AMAP_API_KEY", cfg.Amap.APIKey)
-
-	// 默认值
-	if cfg.Server.Port == 0 {
-		cfg.Server.Port = 8080
+	// 环境变量覆盖：JWT密钥（生产环境必须设置）
+	if envSecret := os.Getenv("RIDEHERMES_JWT_SECRET"); envSecret != "" {
+		cfg.JWT.Secret = envSecret
 	}
-	if cfg.Server.Mode == "" {
-		cfg.Server.Mode = "debug"
+	// 环境变量覆盖：数据库密码
+	if envDBPass := os.Getenv("RIDEHERMES_DB_PASSWORD"); envDBPass != "" {
+		cfg.Database.Password = envDBPass
 	}
-	if cfg.Database.Type == "" {
-		cfg.Database.Type = "mysql"
+	// 环境变量覆盖：Redis密码
+	if envRedisPass := os.Getenv("RIDEHERMES_REDIS_PASSWORD"); envRedisPass != "" {
+		cfg.Redis.Password = envRedisPass
 	}
-	if cfg.JWT.AccessExpire == 0 {
-		cfg.JWT.AccessExpire = 7200
+	// 环境变量覆盖：高德API Key
+	if envAmapKey := os.Getenv("RIDEHERMES_AMAP_KEY"); envAmapKey != "" {
+		cfg.Amap.APIKey = envAmapKey
 	}
-	if cfg.JWT.RefreshExpire == 0 {
-		cfg.JWT.RefreshExpire = 604800
-	}
-	if cfg.Dispatch.ResponseTimeout == 0 {
-		cfg.Dispatch.ResponseTimeout = 15
-	}
-	if cfg.Dispatch.HeartbeatInterval == 0 {
-		cfg.Dispatch.HeartbeatInterval = 30
-	}
-	if cfg.Dispatch.LocationSaveInterval == 0 {
-		cfg.Dispatch.LocationSaveInterval = 10
+	// 环境变量覆盖：服务器端口
+	if envPort := os.Getenv("RIDEHERMES_PORT"); envPort != "" {
+		if port, err := strconv.Atoi(envPort); err == nil {
+			cfg.Server.Port = port
+		}
 	}
 
-	return cfg, nil
+	return &cfg, nil
+}
+
+// Load 加载配置（兼容旧版本调用）
+func Load(path string) (*Config, error) {
+	return LoadConfig(path)
 }

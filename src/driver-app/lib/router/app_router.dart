@@ -3,13 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ride_hermes_driver/config/theme.dart';
 import 'package:ride_hermes_driver/providers/auth_provider.dart';
+import 'package:ride_hermes_driver/screens/agent_config_screen.dart';
 import 'package:ride_hermes_driver/screens/driver_shell.dart';
 import 'package:ride_hermes_driver/screens/dashboard_screen.dart';
 import 'package:ride_hermes_driver/screens/login_screen.dart';
 import 'package:ride_hermes_driver/screens/order_detail_screen.dart';
 import 'package:ride_hermes_driver/screens/orders_screen.dart';
 import 'package:ride_hermes_driver/screens/profile_screen.dart';
+import 'package:ride_hermes_driver/screens/trust_score_screen.dart';
 import 'package:ride_hermes_driver/screens/trip_screen.dart';
+import 'package:ride_hermes_driver/screens/subscription_select_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -75,6 +78,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/profile',
             builder: (context, state) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: '/agent-config',
+            builder: (context, state) => const AgentConfigScreen(),
+          ),
+          GoRoute(
+            path: '/trust-score',
+            builder: (context, state) => const TrustScoreScreen(),
+          ),
+          GoRoute(
+            path: '/subscription-select',
+            builder: (context, state) => const SubscriptionSelectScreen(),
           ),
         ],
       ),

@@ -13,5 +13,16 @@ func AutoMigrate(db *gorm.DB) error {
 		&AIConversation{},
 		&AgentCredential{},
 		&AgentCallLog{},
+		&MatchingDemand{},
+		&MatchingOffer{},
+		&Subscription{},
+		&SubscriptionPayment{},
+		&RevenueRecord{},
+		&DriverAgentProfile{},
+		&TrustScore{},
+		&Evaluation{},
+		&EnterpriseCustomer{},
+		&EnterpriseEmployee{},
+		&RecurringTrip{},
 	)
 }

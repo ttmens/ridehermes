@@ -16,6 +16,13 @@ const OrderList = lazy(() => import('@/pages/orders/OrderList'));
 const OrderDetail = lazy(() => import('@/pages/orders/OrderDetail'));
 const MonitorPage = lazy(() => import('@/pages/map/MonitorPage'));
 const AgentPage = lazy(() => import('@/pages/AgentManagement'));
+const SubscriptionDashboard = lazy(() => import('@/pages/subscriptions/SubscriptionDashboard'));
+const SubscriptionList = lazy(() => import('@/pages/subscriptions/SubscriptionList'));
+const SubscriptionDetail = lazy(() => import('@/pages/subscriptions/SubscriptionDetail'));
+const EnterpriseList = lazy(() => import('@/pages/enterprises/EnterpriseList'));
+const EnterpriseDetail = lazy(() => import('@/pages/enterprises/EnterpriseDetail'));
+const TrustScoresPage = lazy(() => import('@/pages/trust-scores/TrustScoresPage'));
+const NotificationsPage = lazy(() => import('@/pages/notifications/NotificationsPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
 // 加载占位符
@@ -57,6 +64,13 @@ export default function App() {
           <Route path="order/:id" element={<OrderDetail />} />
           <Route path="monitor" element={<MonitorPage />} />
           <Route path="agents" element={<AgentPage />} />
+          <Route path="subscription" element={<SubscriptionList />} />
+          <Route path="subscription/dashboard" element={<SubscriptionDashboard />} />
+          <Route path="subscription/:id" element={<SubscriptionDetail />} />
+          <Route path="trust-scores" element={<TrustScoresPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="enterprise" element={<EnterpriseList />} />
+          <Route path="enterprise/:id" element={<EnterpriseDetail />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

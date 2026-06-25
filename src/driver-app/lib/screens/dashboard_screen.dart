@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:ride_hermes_driver/config/theme.dart';
+import 'package:ride_hermes_driver/providers/agent_provider.dart';
 import 'package:ride_hermes_driver/providers/auth_provider.dart';
 import 'package:ride_hermes_driver/providers/driver_tracking_provider.dart';
 import 'package:ride_hermes_driver/providers/order_provider.dart';
@@ -80,6 +81,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final orderState = ref.watch(driverOrderProvider);
+    final agentState = ref.watch(agentConfigProvider);
     final notifier = ref.read(driverOrderProvider.notifier);
 
     final hasPending = orderState.pendingOrders.isNotEmpty;
@@ -181,6 +183,89 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     child: Column(
                       children: [
                         const SizedBox(height: AppSpacing.xs),
+                        // Agent 信誉分横幅 (with 查看详情 link)
+                        GestureDetector(
+                          onTap: () => context.push('/trust-score'),
+                          child: Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(bottom: AppSpacing.base),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.base,
+                              vertical: AppSpacing.md,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  _reputationColor(agentState.reputationScore).withOpacity(0.12),
+                                  _reputationColor(agentState.reputationScore).withOpacity(0.04),
+                                ],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              border: Border.all(
+                                color: _reputationColor(agentState.reputationScore).withOpacity(0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: _reputationColor(agentState.reputationScore).withOpacity(0.15),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '${agentState.reputationScore}',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: _reputationColor(agentState.reputationScore),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.md),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '信誉分 · ${_reputationLevel(agentState.reputationScore)}',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: _reputationColor(agentState.reputationScore),
+                                        ),
+                                      ),
+                                      Text(
+                                        '完单率 ${(agentState.completionRate * 100).toStringAsFixed(0)}% · 总订单 ${agentState.totalOrders}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.xs),
+                                Text(
+                                  '查看详情',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: _reputationColor(agentState.reputationScore),
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                                Icon(Icons.chevron_right,
+                                    color: _reputationColor(agentState.reputationScore), size: 20),
+                              ],
+                            ),
+                          ),
+                        ),
+
                         // Operation grid
                         GridView.count(
                           crossAxisCount: 3,
@@ -189,6 +274,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           mainAxisSpacing: AppSpacing.base,
                           crossAxisSpacing: AppSpacing.base,
                           children: [
+                            OpTile(
+                              icon: Icons.smart_toy,
+                              label: '我的Agent',
+                              color: AppColors.primary,
+                              value: '配置偏好',
+                              iconSize: 36,
+                              fontSize: 15,
+                              onTap: () => context.push('/agent-config'),
+                            ),
                             OpTile(
                               icon: Icons.receipt_long,
                               label: '今日订单',
@@ -456,5 +550,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
       ),
     );
+  }
+
+  Color _reputationColor(int score) {
+    if (score >= 90) return AppColors.success;
+    if (score >= 70) return AppColors.warning;
+    return AppColors.error;
+  }
+
+  String _reputationLevel(int score) {
+    if (score >= 90) return '优秀';
+    if (score >= 70) return '良好';
+    if (score >= 50) return '一般';
+    return '待提升';
   }
 }

@@ -11,6 +11,10 @@ import {
   PlusOutlined,
   KeyOutlined,
   HomeOutlined,
+  CrownOutlined,
+  BankOutlined,
+  SafetyCertificateOutlined,
+  BellOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -37,6 +41,10 @@ const menuItems = [
     ],
   },
   { key: '/order', icon: <FileTextOutlined />, label: '订单管理' },
+  { key: '/subscription', icon: <CrownOutlined />, label: '订阅管理' },
+  { key: '/enterprise', icon: <BankOutlined />, label: '企业客户' },
+  { key: '/trust-scores', icon: <SafetyCertificateOutlined />, label: '信誉看板' },
+  { key: '/notifications', icon: <BellOutlined />, label: '推送通知' },
   { key: '/monitor', icon: <EnvironmentOutlined />, label: '实时监控' },
   { key: '/agents', icon: <KeyOutlined />, label: '智能体管理' },
 ];
@@ -49,6 +57,11 @@ const breadcrumbMap: Record<string, string> = {
   '/driver': '司机管理',
   '/driver/create': '创建司机',
   '/order': '订单管理',
+  '/subscription': '订阅管理',
+  '/subscription/dashboard': '订阅看板',
+  '/enterprise': '企业客户管理',
+  '/trust-scores': '信誉看板',
+  '/notifications': '推送通知',
   '/monitor': '实时监控',
   '/agents': '智能体管理',
 };
@@ -68,6 +81,10 @@ function getBreadcrumbItems(pathname: string) {
       items.push({ title: '订单详情' });
     } else if (/^\/driver\/\d+$/.test(currentPath)) {
       // already handled by DriverDetail
+    } else if (/^\/subscription\/\d+$/.test(currentPath)) {
+      items.push({ title: '订阅详情' });
+    } else if (/^\/enterprise\/\d+$/.test(currentPath)) {
+      items.push({ title: '企业详情' });
     }
   }
 

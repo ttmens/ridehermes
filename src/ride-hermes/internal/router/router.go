@@ -33,6 +33,12 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client, hub *ws.Hub) *gin
 	aiConvRepo := repository.NewAIConversationRepo(db)
 	agentCredRepo := repository.NewAgentCredentialRepo(db)
 	agentCallLogRepo := repository.NewAgentCallLogRepo(db)
+	subscriptionRepo := repository.NewSubscriptionRepo(db)
+	trustScoreRepo := repository.NewTrustScoreRepo(db)
+	evalRepo := repository.NewEvaluationRepo(db)
+	enterpriseRepo := repository.NewEnterpriseRepo(db)
+	enterpriseEmployeeRepo := repository.NewEnterpriseEmployeeRepo(db)
+	recurringTripRepo := repository.NewRecurringTripRepo(db)
 
 	// Services
 	userSvc := service.NewUserService(userRepo, driverRepo, vehicleRepo, cfg)
@@ -44,10 +50,15 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client, hub *ws.Hub) *gin
 	adminSvc := service.NewAdminService(userRepo, driverRepo, vehicleRepo, orderRepo, db)
 	agentSvc := service.NewAgentService(agentCredRepo, agentCallLogRepo, userRepo)
 	amapSvc := service.NewAmapService(cfg.Amap.APIKey)
+	matchingEngine := service.NewMatchingEngine(orderRepo, driverRepo, dispatchLogRepo, cfg, rdb, db, logger)
+	subscriptionSvc := service.NewSubscriptionService(subscriptionRepo, driverRepo)
+	trustScoreSvc := service.NewTrustScoreService(trustScoreRepo, evalRepo, logger)
+	enterpriseSvc := service.NewEnterpriseService(enterpriseRepo, enterpriseEmployeeRepo, orderRepo, logger)
+	recurringTripSvc := service.NewRecurringTripService(recurringTripRepo, orderSvc, logger)
 
 	h := handler.NewHandler(cfg, db, hub, logger,
 		userSvc, driverSvc, orderSvc, dispatchSvc, locationSvc, aiSvc, adminSvc,
-		agentSvc, amapSvc)
+		agentSvc, amapSvc, matchingEngine, trustScoreSvc, enterpriseSvc, recurringTripSvc, subscriptionSvc)
 	mapHandler := handler.NewMapHandler(amapSvc, logger)
 
 	// Setup Gin
@@ -97,6 +108,27 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client, hub *ws.Hub) *gin
 		admin.GET("/agents/credentials", h.AdminListAgentCredentials)
 		admin.POST("/agents/credentials", h.AdminGenerateAgentKey)
 		admin.PUT("/agents/credentials/:id/revoke", h.AdminRevokeAgentKey)
+		admin.GET("/subscriptions", h.ListSubscriptions)
+		admin.GET("/trust-scores", h.AdminListTrustScores)
+		admin.GET("/trust-scores/anomalies", h.AdminGetAnomalies)
+		admin.GET("/trust-scores/stats", h.GetTrustScoreStats)
+		admin.POST("/trust-scores/anomalies/:id/handle", h.HandleAnomaly)
+		admin.GET("/enterprises", h.AdminListEnterprises)
+		admin.POST("/enterprises", h.AdminCreateEnterprise)
+		admin.GET("/enterprises/:id", h.AdminGetEnterprise)
+		admin.GET("/enterprises/:id/employees", h.AdminGetEnterpriseEmployees)
+		admin.GET("/enterprises/:id/orders", h.AdminGetEnterpriseOrders)
+		admin.POST("/enterprises/:id/employees", h.AdminAddEnterpriseEmployee)
+		admin.GET("/enterprises/:id/bill", h.AdminGetEnterpriseBill)
+		admin.GET("/subscriptions/driver/:driver_id", h.GetSubscriptionByDriver)
+		admin.GET("/subscriptions/driver/:driver_id/monthly-orders", h.GetDriverMonthlyOrders)
+		admin.GET("/subscriptions/:driver_id/stats", h.GetDriverSubscriptionStats)
+		admin.GET("/subscriptions/stats", h.GetSubscriptionStats)
+		admin.GET("/subscriptions/trend", h.GetSubscriptionTrend)
+		admin.GET("/subscriptions/plans/distribution", h.GetPlanDistribution)
+		admin.POST("/subscriptions/:id/cancel", h.CancelSubscription)
+		admin.POST("/subscriptions/:id/renew", h.RenewSubscription)
+		admin.GET("/notifications", h.AdminListNotifications)
 		admin.GET("/agents/logs", h.AdminListAgentLogs)
 	}
 
@@ -104,6 +136,9 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client, hub *ws.Hub) *gin
 	passenger := r.Group("/api/v1/passenger")
 	passenger.Use(authMW, middleware.RoleMiddleware(model.RolePassenger))
 	{
+		passenger.POST("/matching/demands", h.CreateDemand)
+		passenger.GET("/matching/demands/:order_id/matches", h.GetDemandMatches)
+		passenger.POST("/matching/demands/:order_id/confirm", h.ConfirmMatch)
 		passenger.POST("/orders", h.PassengerCreateOrder)
 		passenger.GET("/orders", h.PassengerListOrders)
 		passenger.GET("/orders/:id", h.PassengerGetOrder)
@@ -111,6 +146,9 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client, hub *ws.Hub) *gin
 		passenger.GET("/driver-location/:order_id", h.PassengerGetDriverLocation)
 		passenger.POST("/ai/chat", h.PassengerAIChat)
 		passenger.GET("/ai/sessions", h.PassengerAISessions)
+		passenger.POST("/recurring-trips", h.CreateRecurringTrip)
+		passenger.GET("/recurring-trips", h.ListRecurringTrips)
+		passenger.DELETE("/recurring-trips/:id", h.DeleteRecurringTrip)
 		passenger.GET("/user/profile", h.GetProfile)
 		passenger.PUT("/user/profile", h.UpdateProfile)
 		// Agent key self-service (乘客自助管理 API Key)
@@ -128,6 +166,7 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client, hub *ws.Hub) *gin
 	{
 		driver.PUT("/online", h.DriverOnline)
 		driver.PUT("/offline", h.DriverOffline)
+		driver.POST("/matching/demands/:order_id/offers", h.SubmitOffer)
 		driver.POST("/orders/:id/accept", h.DriverAcceptOrder)
 		driver.POST("/orders/:id/reject", h.DriverRejectOrder)
 		driver.POST("/orders/:id/arrive", h.DriverArrive)
@@ -135,6 +174,8 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client, hub *ws.Hub) *gin
 		driver.POST("/orders/:id/complete", h.DriverCompleteOrder)
 		driver.GET("/orders", h.DriverListOrders)
 		driver.GET("/orders/:id", h.DriverGetOrder)
+		driver.POST("/subscriptions", h.CreateSubscription)
+		driver.GET("/subscriptions", h.GetDriverSubscription)
 		driver.GET("/user/profile", h.GetProfile)
 		driver.PUT("/user/profile", h.UpdateProfile)
 	}

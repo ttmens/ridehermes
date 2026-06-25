@@ -46,6 +46,8 @@ type Order struct {
 	StartedAt    *time.Time `json:"started_at"`
 	EndedAt      *time.Time `json:"ended_at"`
 	CancelledAt  *time.Time `json:"cancelled_at"`
+	DemandID     *int64     `gorm:"index" json:"demand_id"`
+	MatchingMode int8       `gorm:"not null;default:1" json:"matching_mode"` // 1=Platform, 2=A2A
 	CancelReason string     `gorm:"size:255;not null;default:''" json:"cancel_reason"`
 	Passenger    User       `gorm:"foreignKey:PassengerID" json:"passenger,omitempty"`
 	Driver       *Driver    `gorm:"foreignKey:DriverID" json:"driver,omitempty"`

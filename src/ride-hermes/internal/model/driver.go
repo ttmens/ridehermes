@@ -14,7 +14,8 @@ type Driver struct {
 	LicenseNo string  `gorm:"uniqueIndex;size:30;not null" json:"license_no"`
 	Status    int8    `gorm:"not null;default:1;index" json:"status"`
 	Rating    float64 `gorm:"type:decimal(3,2);not null;default:5.00" json:"rating"`
-	Balance   float64 `gorm:"type:decimal(12,2);not null;default:0.00" json:"balance"`
+	Balance        float64 `gorm:"type:decimal(12,2);not null;default:0.00" json:"balance"`
+	SubscriptionID *int64 `gorm:"index" json:"subscription_id"`
 	User      User    `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Vehicle   Vehicle `gorm:"foreignKey:DriverID" json:"vehicle,omitempty"`
 }

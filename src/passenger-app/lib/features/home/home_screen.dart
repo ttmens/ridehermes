@@ -15,6 +15,9 @@ import 'package:ride_hermes_passenger/features/home/widgets/service_grid.dart';
 import 'package:ride_hermes_passenger/features/home/widgets/safety_assurance.dart';
 import 'package:ride_hermes_passenger/features/home/widgets/weather_card.dart';
 import 'package:ride_hermes_passenger/features/home/widgets/recent_trips.dart';
+import 'package:ride_hermes_passenger/models/poi.dart';
+import 'package:ride_hermes_passenger/shared/widgets/address_input.dart';
+import 'package:ride_hermes_passenger/features/plan_trip/plan_trip_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -182,9 +185,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 children: [
                   const GreetingBar(),
 
-                  // Pickup point entry card
+                  // Destination search card
                   GestureDetector(
-                    onTap: () => context.push('/schedule-trip'),
+                    onTap: () => _openDestinationSearch(),
                     child: Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       padding: const EdgeInsets.all(18),
@@ -207,7 +210,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               color: theme.colorScheme.primary.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Icon(Icons.calendar_month, color: theme.colorScheme.primary, size: 28),
+                            child: Icon(Icons.search, color: theme.colorScheme.primary, size: 28),
                           ),
                           const SizedBox(width: 14),
                           Expanded(
@@ -215,7 +218,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  '安排行程',
+                                  '你要去哪儿',
                                   style: TextStyle(fontSize: 13, color: Colors.grey),
                                 ),
                                 const SizedBox(height: 2),
@@ -237,6 +240,85 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   QuickCommands(onTap: _onQuickCommand),
                   const SizedBox(height: 16),
                   const PromoBanner(),
+                  const SizedBox(height: 16),
+                  // 计划出行入口
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PlanTripScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            theme.colorScheme.primary,
+                            theme.colorScheme.primary.withOpacity(0.8),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.colorScheme.primary.withOpacity(0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.event_seat,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '计划出行',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '预约确定性出行，选择满意司机',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white.withOpacity(0.9),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   const ServiceGrid(),
                   const SizedBox(height: 16),
