@@ -1,71 +1,81 @@
-# RideHermes 项目文档
+# RideHermes 文档
 
-> AI 驱动的智能出行平台
+> 唯一导航入口 | [当前状态](./CURRENT-STATUS.md)
 
-## 📚 文档导航
+## L1 产品
 
-### 产品文档
 | 文档 | 说明 |
 |------|------|
-| [00-brief.md](./00-brief.md) | 项目简介与愿景 |
-| [CONTEXT.md](./CONTEXT.md) | 项目背景与关键决策 |
-| [03-prd.md](./03-prd.md) | 产品需求文档 |
-| [DESIGN.md](./DESIGN.md) | 设计系统规范 |
+| [product/vision.md](./product/vision.md) | 产品愿景（A2A、薄/厚层） |
+| [product/prd.md](./product/prd.md) | PRD v3 八段式 |
+| [product/journey.md](./product/journey.md) | 用户旅程 J1–J3 |
+| [product/context.md](./product/context.md) | 背景与不变量 |
+| [product/decisions.md](./product/decisions.md) | ADR-001～007 |
+| [product/analysis.md](./product/analysis.md) | 方案论证（双轨过渡） |
 
-### 架构文档
+## L2 架构
+
 | 文档 | 说明 |
 |------|------|
-| [architecture/c4-context.md](./architecture/c4-context.md) | C4 上下文图 - 系统边界 |
-| [architecture/c4-container.md](./architecture/c4-container.md) | C4 容器图 - 技术选型 |
-| [architecture/c4-component.md](./architecture/c4-component.md) | C4 组件图 - 模块划分 |
+| [architecture/c4-context.md](./architecture/c4-context.md) | L1 上下文 |
+| [architecture/c4-container.md](./architecture/c4-container.md) | L2 容器 |
+| [architecture/c4-component.md](./architecture/c4-component.md) | L3 组件 |
 
-### 技术文档
+## L3 接口与规格
+
 | 文档 | 说明 |
 |------|------|
-| [api/overview.md](./api/overview.md) | API 接口概述 |
-| [guides/deployment.md](./guides/deployment.md) | 部署指南 |
-| [guides/development.md](./guides/development.md) | 开发指南 |
+| [api/overview.md](./api/overview.md) | REST + A2A + MCP（**API SSOT**） |
+| [openspec/specs/a2a-protocol.md](./openspec/specs/a2a-protocol.md) | 五报文 + 意图本体 |
+| [openspec/specs/agent-roles.md](./openspec/specs/agent-roles.md) | 三类 Agent |
+| [openspec/specs/compliance-gates.md](./openspec/specs/compliance-gates.md) | 合规硬闸门 |
+| [openspec/specs/trust-facts.md](./openspec/specs/trust-facts.md) | 事实 vs 评分 |
+| [openspec/proposal.md](./openspec/proposal.md) | 变更提案 |
+| [openspec/tasks.md](./openspec/tasks.md) | 文档任务清单 |
 
-### 运维文档
+## L4 设计
+
 | 文档 | 说明 |
 |------|------|
-| [RUNBOOK.md](./RUNBOOK.md) | 运维手册 |
+| [design/DESIGN.md](./design/DESIGN.md) | 视觉规范 + 服务等级 UX |
+
+## L5 工程与运维
+
+| 文档 | 说明 |
+|------|------|
+| [guides/development.md](./guides/development.md) | 本地开发 |
+| [ops/deployment.md](./ops/deployment.md) | 部署 |
+| [ops/runbook.md](./ops/runbook.md) | 运维 |
+
+## L6 审计
+
+| 文档 | 说明 |
+|------|------|
+| [audit/intended-vs-implemented.md](./audit/intended-vs-implemented.md) | 意图 vs 实现 |
+| [audit/gates.json](./audit/gates.json) | 文档门禁 |
+
+## 归档
+
+| 文档 | 说明 |
+|------|------|
+| [archive/vision-full.md](./archive/vision-full.md) | 灵犀技术方案全文 |
 
 ---
 
-## 🏗️ 项目结构
-
-```
-ridehermes/
-├── src/
-│   ├── ride-hermes/          # Go 后端服务
-│   ├── admin-web/            # React 管理后台
-│   ├── passenger-app/        # Flutter 乘客端
-│   ├── driver-app/           # Flutter 司机端
-│   ├── ai-service/           # Python AI 服务
-│   └── ride-hermes-mcp/      # TypeScript MCP Server
-├── docs/                     # 本文档目录
-├── docker-compose.yml        # Docker 编排
-└── README.md                 # 项目根文档
-```
-
-## 🚀 快速开始
+## 快速开始
 
 ```bash
-# 1. 启动基础设施
-cd src && docker compose up -d
-
-# 2. 启动后端
-cd ride-hermes && go run ./cmd/server
-
-# 3. 启动管理后台
+cd src && docker compose up -d mysql redis
+cd ride-hermes && go run ./cmd/server --migrate && go run ./cmd/server
 cd admin-web && pnpm dev
-
-# 4. 访问
-# 管理后台: http://localhost:3002
-# API: http://localhost:8686
 ```
+
+| 服务 | 端口 |
+|------|------|
+| Go API | 8686 |
+| admin-web | 3002 |
+| ai-service | 8001 |
 
 ---
 
-*最后更新: 2026-06-24*
+*对齐日期: 2026-06-26 | docs IA v3.1*

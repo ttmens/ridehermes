@@ -1,98 +1,73 @@
-# C4 组件图 - 模块划分
+# C4 Level 3 — 组件（Go API 薄协调层）
 
-> Go 后端 API 内部组件划分
+> 组件划分：薄层模块 + 边缘策略代理 | 最后更新: 2026-06-26
 
-## 后端组件总览
+## 薄协调层组件
 
+| 组件 | 代码路径 | 职责 |
+|------|----------|------|
+| **Identity** | `user_service`, `auth_handler` | JWT、角色、用户 CRUD |
+| **Discovery** | `matching_handler`, `dispatch_service` | 硬约束候选（R0 dispatch 过渡） |
+| **Settlement** | `order_service`, `subscription_service` | 订单/订阅缔约记录 |
+| **Audit** | `agent_call_log`, admin agents/logs | Agent 调用审计 |
+| **ComplianceGate** | *规格见 compliance-gates* | 疲劳二元硬拒（未实现） |
+
+## 厚边缘组件（经 API 暴露）
+
+| 组件 | 代码路径 | 职责 |
+|------|----------|------|
+| **DemandAgentPolicy** | `enterprise_service`, `recurring_trip_service` | B 端政策、周期 Intent |
+| **SupplyAgentStrategy** | `matching_service`, driver matching offers | Offer/Counter |
+| **NegotiationEngine** | `matching_service` | 多轮收敛（R0 简化） |
+| **IntentParser** | `ai-service` | LLM+ASR Intent 声明 |
+| **AgentBridge** | MCP + `/api/v1/agent/*` | 外部 Agent 互操作 |
+
+## Handler 映射
+
+| Handler | 路由组 | 层级 |
+|---------|--------|------|
+| auth_handler | `/api/v1/auth` | 薄层 |
+| matching_handler | `/passenger|driver/matching` | 边缘协商 |
+| passenger_handler | orders, ai, recurring | 混合 |
+| agent_handler | `/api/v1/agent` | 边缘 |
+| admin_handler | `/api/v1/admin` | 薄层运维 |
+| map_handler | `/api/v1/maps` | 基础设施 |
+
+## 管理后台页面映射
+
+| 页面 | 路由 | 层级 | 备注 |
+|------|------|------|------|
+| 企业客户 | `/enterprise` | 需求 Agent | ✅ |
+| 订阅管理 | `/subscription` | 供给 SaaS | ✅ |
+| 信誉分 | `/trust-scores` | ⚠️ 过渡 | ADR-004 待重构 |
+| 智能体 | `/agents` | Agent 审计 | ✅ |
+| 地图监控 | `/monitor` | R0 实时过渡 | WS 追踪 |
+
+## 组件图
+
+```mermaid
+flowchart LR
+  subgraph thin [薄层]
+    ID[Identity]
+    DIS[Discovery]
+    SET[Settlement]
+    AUD[Audit]
+  end
+
+  subgraph edge [边缘]
+    DEM[DemandAgentPolicy]
+    SUP[SupplyAgentStrategy]
+    NEG[NegotiationEngine]
+  end
+
+  ID --> DIS
+  DIS --> DEM
+  DIS --> SUP
+  SUP --> NEG
+  NEG --> SET
+  SET --> AUD
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        HTTP 层                                   │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐  │
-│  │  Auth   │ │Passenger│ │ Driver  │ │  Admin  │ │  Map    │  │
-│  │ Handler │ │ Handler │ │ Handler │ │ Handler │ │ Handler │  │
-│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘  │
-│       │           │           │           │           │         │
-│  ┌────┴────┐ ┌────┴────┐                                 │
-│  │WebSocket│ │ Agent   │                                 │
-│  │ Handler │ │ Handler │                                 │
-│  └────┬────┘ └────┬────┘                                 │
-└───────┼───────────┼───────────────────────────────────────────┘
-        │           │
-┌───────┼───────────┼───────────────────────────────────────────┐
-│       │      业务层                                            │
-│  ┌────▼────────────▼──────────────────────────────────────┐  │
-│  │  UserService  │ OrderService │ DispatchService         │  │
-│  │  LocationService │ PriceService │ AmapService          │  │
-│  │  AIService    │ AgentService │ DriverService          │  │
-│  └────┬────────────┬──────────────────────────────────────┘  │
-│       │            │                                            │
-└───────┼────────────┼────────────────────────────────────────────┘
-        │            │
-┌───────┼────────────┼────────────────────────────────────────────┐
-│       │       数据层                                              │
-│  ┌────▼────┐ ┌────▼────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ │
-│  │UserRepo │ │OrderRepo│ │DriverRepo│ │LocRepo  │ │VehRepo  │ │
-│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ │
-│       │           │           │           │           │         │
-│  ┌────▼───────────▼───────────▼───────────▼───────────▼────┐ │
-│  │                    MySQL / Redis                         │ │
-│  └──────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Handler 层 (HTTP 处理器)
-
-| 组件 | 文件 | 职责 |
-|------|------|------|
-| **Auth Handler** | `auth_handler.go` | 登录、Token 刷新 |
-| **Passenger Handler** | `passenger_handler.go` | 乘客叫车、订单查询 |
-| **Driver Handler** | `driver_handler.go` | 司机接单、行程状态 |
-| **Admin Handler** | `admin_handler.go` | 用户管理、订单管理 |
-| **Map Handler** | `map_handler.go` | POI 搜索、路线规划 |
-| **Agent Handler** | `agent_handler.go` | MCP 智能体认证 |
-| **WS Handler** | `ws_handler.go` | WebSocket 连接管理 |
-
-## Service 层 (业务逻辑)
-
-| 组件 | 文件 | 职责 |
-|------|------|------|
-| **User Service** | `user_service.go` | 用户 CRUD、认证 |
-| **Order Service** | `order_service.go` | 订单生命周期 |
-| **Dispatch Service** | `dispatch_service.go` | 派单算法 |
-| **Location Service** | `location_service.go` | 位置处理 |
-| **Price Service** | `price_service.go` | 价格计算 |
-| **Amap Service** | `amap_service.go` | 高德地图 API 封装 |
-| **AI Service** | `ai_service.go` | AI 服务调用 |
-| **Agent Service** | `agent_service.go` | 智能体管理 |
-
-## Repository 层 (数据访问)
-
-| 组件 | 文件 | 职责 |
-|------|------|------|
-| **User Repository** | `user_repo.go` | 用户数据访问 |
-| **Order Repository** | `order_repo.go` | 订单数据访问 |
-| **Driver Repository** | `driver_repo.go` | 司机数据访问 |
-| **Location Repository** | `location_repo.go` | 位置数据访问 |
-| **Vehicle Repository** | `vehicle_repo.go` | 车辆数据访问 |
 
 ---
 
-## 管理后台组件
-
-| 页面 | 路由 | 功能 |
-|------|------|------|
-| LoginPage | `/login` | 管理员登录 |
-| DashboardPage | `/` | 数据概览 |
-| PassengerList | `/passengers` | 乘客列表 |
-| PassengerCreate | `/passengers/create` | 创建乘客 |
-| DriverList | `/drivers` | 司机列表 |
-| DriverCreate | `/drivers/create` | 创建司机 |
-| DriverDetail | `/drivers/:id` | 司机详情 |
-| OrderList | `/orders` | 订单列表 |
-| OrderDetail | `/orders/:id` | 订单详情 |
-| AgentManagement | `/agents` | 智能体管理 |
-| MonitorPage | `/monitor` | 地图监控 |
-
----
-
-*文档版本: v1.0 | 最后更新: 2026-06-24*
+*Level 4 代码级可选；本 PRD 不展开*

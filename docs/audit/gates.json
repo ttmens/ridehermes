@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "project": "ridehermes",
+  "updated": "2026-06-26",
+  "gates": {
+    "align": {
+      "status": "pass",
+      "criteria": ["decisions.md >= 5 ADR", "product/context.md aligned with product/vision"]
+    },
+    "analysis": {
+      "status": "pass",
+      "criteria": ["product/analysis.md", "c4 L1-L3", "openspec/proposal.md"]
+    },
+    "spec": {
+      "status": "pass",
+      "criteria": ["product/journey.md", "product/prd.md 8-section", "openspec/specs/*"]
+    },
+    "doc_sync": {
+      "status": "pass",
+      "criteria": ["api/overview.md", "product/vision.md", "architecture/*"]
+    },
+    "ship": {
+      "status": "pass",
+      "criteria": ["ops/runbook.md", "guides/*", "audit/intended-vs-implemented reviewed"]
+    }
+  }
+}

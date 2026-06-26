@@ -64,13 +64,30 @@ pnpm install && pnpm build
 pm2 serve dist 3002 --name rh-web --spa
 ```
 
-### 2.6 验证
+### 2.6 启动 ai-service（可选）
+
+```bash
+cd src/ai-service
+cp .env.example .env
+uvicorn app.main:app --host 0.0.0.0 --port 8001
+pm2 start "uvicorn app.main:app --host 0.0.0.0 --port 8001" --name rh-ai --cwd src/ai-service
+```
+
+### 2.7 验证
 
 ```bash
 pm2 status
 curl http://localhost:8686/health
 curl http://localhost:3002
+curl http://localhost:8001/health   # 若部署 ai-service
 ```
+
+### Agent / MCP 集成
+
+- MCP：`ridehermes-mcp-server`（10 工具）
+- Agent REST：`/api/v1/agent/*`
+
+见 [`product/vision.md`](../product/vision.md)。
 
 ---
 
@@ -142,4 +159,4 @@ server {
 
 ---
 
-*文档版本: v1.0 | 最后更新: 2026-06-24*
+*文档版本: v3.0 | 最后更新: 2026-06-26*
