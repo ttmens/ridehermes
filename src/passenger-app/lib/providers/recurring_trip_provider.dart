@@ -88,8 +88,9 @@ class RecurringTripNotifier extends StateNotifier<RecurringTripState> {
 
     try {
       final response = await _apiService.get('/passenger/recurring-trips');
-      if (response != null && response['trips'] != null) {
-        final trips = (response['trips'] as List)
+      if (response != null && (response['list'] != null || response['trips'] != null)) {
+        final rawList = (response['list'] ?? response['trips']) as List;
+        final trips = rawList
             .map((json) => RecurringTrip.fromJson(json))
             .toList();
         state = state.copyWith(isLoading: false, trips: trips);
