@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ridehermes/ride-hermes/internal/common"
 	"github.com/ridehermes/ride-hermes/internal/model"
 	ws "github.com/ridehermes/ride-hermes/internal/ws"
+	"go.uber.org/zap"
 )
 
 func (h *Handler) DriverOnline(c *gin.Context) {
@@ -241,4 +243,173 @@ func (h *Handler) DriverGetOrder(c *gin.Context) {
 		return
 	}
 	common.Success(c, order)
+}
+
+// DriverGetAgentConfig 获取司机Agent配置
+func (h *Handler) DriverGetAgentConfig(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	driver, err := h.DriverSvc.GetDriverByUserID(c.Request.Context(), userID)
+	if err != nil {
+		common.Error(c, common.CodeDriverNotFound, "司机不存在")
+		return
+	}
+	var profile model.DriverAgentProfile
+	result := h.db.Where("driver_id = ?", driver.ID).First(&profile)
+	if result.Error != nil {
+		common.Success(c, gin.H{
+			"driver_id":            driver.ID,
+			"base_price":           3.5,
+			"price_range":          0.2,
+			"min_accept_price":     25.0,
+			"preferred_areas":      model.JSONArea{},
+			"preferred_time_slots": model.JSONTimeSlots{},
+			"preferred_car_types":  model.JSONArray{},
+			"available_time_slots": model.JSONTimeSlots{},
+			"is_online":            false,
+		})
+		return
+	}
+	common.Success(c, profile)
+}
+
+// DriverSaveAgentPreferences 保存接单偏好
+func (h *Handler) DriverSaveAgentPreferences(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	driver, err := h.DriverSvc.GetDriverByUserID(c.Request.Context(), userID)
+	if err != nil {
+		common.Error(c, common.CodeDriverNotFound, "司机不存在")
+		return
+	}
+	var req struct {
+		PreferredAreas     model.JSONArea      `json:"preferred_areas"`
+		PreferredTimeSlots model.JSONTimeSlots `json:"preferred_time_slots"`
+		PreferredCarTypes  model.JSONArray     `json:"preferred_car_types"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.Error(c, common.CodeParamError, "参数错误")
+		return
+	}
+	var profile model.DriverAgentProfile
+	result := h.db.Where("driver_id = ?", driver.ID).First(&profile)
+	if result.Error != nil {
+		profile = model.DriverAgentProfile{
+			DriverID:           driver.ID,
+			PreferredAreas:     req.PreferredAreas,
+			PreferredTimeSlots: req.PreferredTimeSlots,
+			PreferredCarTypes:  req.PreferredCarTypes,
+			BasePrice:          3.5,
+			PriceRange:         0.2,
+			MinAcceptPrice:     25.0,
+		}
+		h.db.Create(&profile)
+	} else {
+		h.db.Model(&profile).Updates(map[string]interface{}{
+			"preferred_areas":      req.PreferredAreas,
+			"preferred_time_slots": req.PreferredTimeSlots,
+			"preferred_car_types":  req.PreferredCarTypes,
+		})
+	}
+	common.Success(c, nil)
+}
+
+// DriverSaveAgentPricing 保存定价策略
+func (h *Handler) DriverSaveAgentPricing(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	driver, err := h.DriverSvc.GetDriverByUserID(c.Request.Context(), userID)
+	if err != nil {
+		common.Error(c, common.CodeDriverNotFound, "司机不存在")
+		return
+	}
+	var req struct {
+		BasePrice      float64 `json:"base_price"`
+		PriceRange     float64 `json:"price_range"`
+		MinAcceptPrice float64 `json:"min_accept_price"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.Error(c, common.CodeParamError, "参数错误")
+		return
+	}
+	var profile model.DriverAgentProfile
+	result := h.db.Where("driver_id = ?", driver.ID).First(&profile)
+	if result.Error != nil {
+		profile = model.DriverAgentProfile{
+			DriverID:       driver.ID,
+			BasePrice:      req.BasePrice,
+			PriceRange:     req.PriceRange,
+			MinAcceptPrice: req.MinAcceptPrice,
+		}
+		h.db.Create(&profile)
+	} else {
+		h.db.Model(&profile).Updates(map[string]interface{}{
+			"base_price":       req.BasePrice,
+			"price_range":      req.PriceRange,
+			"min_accept_price": req.MinAcceptPrice,
+		})
+	}
+	common.Success(c, nil)
+}
+
+// DriverSaveAgentSchedule 保存在线时间
+func (h *Handler) DriverSaveAgentSchedule(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	driver, err := h.DriverSvc.GetDriverByUserID(c.Request.Context(), userID)
+	if err != nil {
+		common.Error(c, common.CodeDriverNotFound, "司机不存在")
+		return
+	}
+	var req struct {
+		AvailableTimeSlots model.JSONTimeSlots `json:"available_time_slots"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.Error(c, common.CodeParamError, "参数错误")
+		return
+	}
+	var profile model.DriverAgentProfile
+	result := h.db.Where("driver_id = ?", driver.ID).First(&profile)
+	if result.Error != nil {
+		profile = model.DriverAgentProfile{
+			DriverID:           driver.ID,
+			AvailableTimeSlots: req.AvailableTimeSlots,
+			BasePrice:          3.5,
+			PriceRange:         0.2,
+			MinAcceptPrice:     25.0,
+		}
+		h.db.Create(&profile)
+	} else {
+		h.db.Model(&profile).Updates(map[string]interface{}{
+			"available_time_slots": req.AvailableTimeSlots,
+		})
+	}
+	common.Success(c, nil)
+}
+
+// AdminDisableDriver 管理员禁用司机
+func (h *Handler) AdminDisableDriver(c *gin.Context) {
+	driverIDStr := c.Param("driver_id")
+	driverID, err := strconv.ParseInt(driverIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的司机ID"})
+		return
+	}
+
+	var req struct {
+		Reason string `json:"reason" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 调用 service 层禁用司机
+	if err := h.DriverSvc.DisableDriver(c.Request.Context(), driverID, req.Reason); err != nil {
+		h.logger.Error("failed to disable driver", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "禁用司机失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "司机已禁用",
+	})
 }

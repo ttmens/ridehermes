@@ -92,8 +92,10 @@ function scoreLevelTag(score: number) {
   return <Tag color="error" icon={<CloseCircleOutlined />}>低危</Tag>;
 }
 
-/** 异常类型映射 */
+/** 异常类型映射（与后端 TrustScoreService.DetectAnomalies 对齐） */
 const ANOMALY_TYPE_MAP: Record<string, { text: string; color: string }> = {
+  ScoreDrop: { text: '信誉分骤降', color: 'red' },
+  ConsecutiveBadReviews: { text: '连续差评', color: 'orange' },
   high_cancellation: { text: '高取消率', color: 'orange' },
   frequent_complaints: { text: '频繁投诉', color: 'red' },
   abnormal_route: { text: '异常路线', color: 'purple' },
@@ -233,6 +235,164 @@ function AnomalyHandleModal({ open, record, onClose, onSuccess }: AnomalyModalPr
   );
 }
 
+/* ==================== 调整分数表单 ==================== */
+
+interface AdjustScoreFormProps {
+  driver: TrustScoreItem | null;
+  onSubmit: (values: { new_score: number; reason: string }) => void;
+  onCancel: () => void;
+}
+
+function AdjustScoreForm({ driver, onSubmit, onCancel }: AdjustScoreFormProps) {
+  const [form] = Form.useForm();
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleOk = async () => {
+    try {
+      const values = await form.validateFields();
+      setSubmitting(true);
+      await onSubmit(values);
+      form.resetFields();
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'errorFields' in err) {
+        // form validation error
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div>
+      {driver && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 8 }}>
+            <span style={{ fontWeight: 600, marginRight: 8 }}>司机：</span>
+            {driver.driver_name}
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <span style={{ fontWeight: 600, marginRight: 8 }}>当前分数：</span>
+            <span style={{ color: scoreColor(driver.trust_score), fontSize: 18, fontWeight: 600 }}>
+              {driver.trust_score}
+            </span>
+          </div>
+        </div>
+      )}
+      <Form form={form} layout="vertical">
+        <Form.Item
+          name="new_score"
+          label="新分数"
+          rules={[
+            { required: true, message: '请输入新分数' },
+            { type: 'number', min: 0, max: 100, message: '分数必须在 0-100 之间' },
+          ]}
+        >
+          <Input type="number" placeholder="输入新的信誉分（0-100）" />
+        </Form.Item>
+        <Form.Item
+          name="reason"
+          label="调整原因"
+          rules={[{ required: true, message: '请输入调整原因' }]}
+        >
+          <Input.TextArea
+            rows={3}
+            placeholder="请输入调整原因（必填）"
+            maxLength={200}
+            showCount
+          />
+        </Form.Item>
+        <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+          <Space>
+            <Button onClick={onCancel}>取消</Button>
+            <Button type="primary" onClick={handleOk} loading={submitting}>
+              确认调整
+            </Button>
+          </Space>
+        </Form.Item>
+      </Form>
+    </div>
+  );
+}
+
+/* ==================== 禁用司机表单 ==================== */
+
+interface DisableDriverFormProps {
+  driver: TrustScoreItem | null;
+  onSubmit: (values: { reason: string }) => void;
+  onCancel: () => void;
+}
+
+function DisableDriverForm({ driver, onSubmit, onCancel }: DisableDriverFormProps) {
+  const [form] = Form.useForm();
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleOk = async () => {
+    try {
+      const values = await form.validateFields();
+      setSubmitting(true);
+      await onSubmit(values);
+      form.resetFields();
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'errorFields' in err) {
+        // form validation error
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div>
+      {driver && (
+        <div style={{ marginBottom: 16, padding: 12, background: '#fff7e6', borderRadius: 4 }}>
+          <WarningOutlined style={{ color: colors.warning, marginRight: 8 }} />
+          <span>禁用后该司机将无法接单，请谨慎操作。</span>
+        </div>
+      )}
+      {driver && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 8 }}>
+            <span style={{ fontWeight: 600, marginRight: 8 }}>司机：</span>
+            {driver.driver_name}
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <span style={{ fontWeight: 600, marginRight: 8 }}>手机号：</span>
+            {driver.driver_phone}
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <span style={{ fontWeight: 600, marginRight: 8 }}>当前信誉分：</span>
+            <span style={{ color: scoreColor(driver.trust_score), fontWeight: 600 }}>
+              {driver.trust_score}
+            </span>
+          </div>
+        </div>
+      )}
+      <Form form={form} layout="vertical">
+        <Form.Item
+          name="reason"
+          label="禁用原因"
+          rules={[{ required: true, message: '请输入禁用原因' }]}
+        >
+          <Input.TextArea
+            rows={3}
+            placeholder="请输入禁用原因（必填）"
+            maxLength={200}
+            showCount
+          />
+        </Form.Item>
+        <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+          <Space>
+            <Button onClick={onCancel}>取消</Button>
+            <Button type="primary" danger onClick={handleOk} loading={submitting}>
+              确认禁用
+            </Button>
+          </Space>
+        </Form.Item>
+      </Form>
+    </div>
+  );
+}
+
 /* ==================== 主页面组件 ==================== */
 
 export default function TrustScoresPage() {
@@ -247,6 +407,13 @@ export default function TrustScoresPage() {
   // 弹窗状态
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedAnomaly, setSelectedAnomaly] = useState<AnomalyItem | null>(null);
+  
+  // 调整分数弹窗状态
+  const [adjustScoreModalOpen, setAdjustScoreModalOpen] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState<TrustScoreItem | null>(null);
+  
+  // 禁用司机弹窗状态
+  const [disableDriverModalOpen, setDisableDriverModalOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -269,10 +436,35 @@ export default function TrustScoresPage() {
       const anomaliesData = getData(anomaliesRes);
 
       if (statsData) setStats(statsData);
-      if (Array.isArray(driversData?.list)) setDrivers(driversData.list);
-      else if (Array.isArray(driversData)) setDrivers(driversData);
-      if (Array.isArray(anomaliesData?.list)) setAnomalies(anomaliesData.list);
-      else if (Array.isArray(anomaliesData)) setAnomalies(anomaliesData);
+      
+      // 后端返回 data.scores，前端需要映射为 TrustScoreItem[]
+      const scoresArray = driversData?.scores ?? driversData?.list ?? (Array.isArray(driversData) ? driversData : []);
+      if (Array.isArray(scoresArray) && scoresArray.length > 0) {
+        // 转换数据：后端是 5 分制，前端用 0-100 显示
+        const mapped: TrustScoreItem[] = scoresArray.map((s: any) => ({
+          driver_id: s.driver_id ?? 0,
+          driver_name: s.driver_name ?? `司机 #${s.driver_id}`,
+          driver_phone: s.driver_phone ?? '',
+          trust_score: Math.round((s.total_score ?? 0) * 20), // 5分 → 100分
+          total_orders: s.total_orders ?? 0,
+          completed_orders: s.completed_orders ?? 0,
+          cancellation_rate: s.cancellation_rate ?? 0,
+          rating: s.rating ?? 0,
+          anomaly_count: s.anomaly_count ?? 0,
+          last_anomaly_at: s.last_anomaly_at ?? null,
+          created_at: s.created_at ?? '',
+          updated_at: s.updated_at ?? '',
+        }));
+        setDrivers(mapped);
+      } else if (Array.isArray(driversData)) {
+        setDrivers(driversData);
+      }
+      
+      // 异常数据映射
+      const anomaliesArray = anomaliesData?.anomalies ?? anomaliesData?.list ?? (Array.isArray(anomaliesData) ? anomaliesData : []);
+      if (Array.isArray(anomaliesArray)) {
+        setAnomalies(anomaliesArray);
+      }
     } finally {
       setLoading(false);
     }
@@ -282,6 +474,44 @@ export default function TrustScoresPage() {
   const openHandleModal = (record: AnomalyItem) => {
     setSelectedAnomaly(record);
     setModalOpen(true);
+  };
+
+  /** 打开调整分数弹窗 */
+  const openAdjustScoreModal = (record: TrustScoreItem) => {
+    setSelectedDriver(record);
+    setAdjustScoreModalOpen(true);
+  };
+
+  /** 打开禁用司机弹窗 */
+  const openDisableDriverModal = (record: TrustScoreItem) => {
+    setSelectedDriver(record);
+    setDisableDriverModalOpen(true);
+  };
+
+  /** 处理调整分数 */
+  const handleAdjustScore = async (values: { new_score: number; reason: string }) => {
+    if (!selectedDriver) return;
+    try {
+      await api.post(`/admin/trust-scores/${selectedDriver.driver_id}/adjust`, values);
+      message.success('分数调整成功');
+      setAdjustScoreModalOpen(false);
+      fetchData();
+    } catch (error) {
+      message.error('分数调整失败');
+    }
+  };
+
+  /** 处理禁用司机 */
+  const handleDisableDriver = async (values: { reason: string }) => {
+    if (!selectedDriver) return;
+    try {
+      await api.post(`/admin/drivers/${selectedDriver.driver_id}/disable`, values);
+      message.success('司机已禁用');
+      setDisableDriverModalOpen(false);
+      fetchData();
+    } catch (error) {
+      message.error('禁用失败');
+    }
   };
 
   if (loading) {
@@ -385,6 +615,31 @@ export default function TrustScoresPage() {
       key: 'updated_at',
       width: 150,
       render: (v: string) => (v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '-'),
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 180,
+      fixed: 'right' as const,
+      render: (_: unknown, record: TrustScoreItem) => (
+        <Space>
+          <Button
+            type="link"
+            size="small"
+            onClick={() => openAdjustScoreModal(record)}
+          >
+            调整分数
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            danger
+            onClick={() => openDisableDriverModal(record)}
+          >
+            禁用
+          </Button>
+        </Space>
+      ),
     },
   ];
 
@@ -627,6 +882,46 @@ export default function TrustScoresPage() {
         }}
         onSuccess={fetchData}
       />
+
+      {/* ====== 5. 调整分数弹窗 ====== */}
+      <Modal
+        title="调整信誉分"
+        open={adjustScoreModalOpen}
+        onCancel={() => {
+          setAdjustScoreModalOpen(false);
+          setSelectedDriver(null);
+        }}
+        footer={null}
+      >
+        <AdjustScoreForm
+          driver={selectedDriver}
+          onSubmit={handleAdjustScore}
+          onCancel={() => {
+            setAdjustScoreModalOpen(false);
+            setSelectedDriver(null);
+          }}
+        />
+      </Modal>
+
+      {/* ====== 6. 禁用司机弹窗 ====== */}
+      <Modal
+        title="禁用司机"
+        open={disableDriverModalOpen}
+        onCancel={() => {
+          setDisableDriverModalOpen(false);
+          setSelectedDriver(null);
+        }}
+        footer={null}
+      >
+        <DisableDriverForm
+          driver={selectedDriver}
+          onSubmit={handleDisableDriver}
+          onCancel={() => {
+            setDisableDriverModalOpen(false);
+            setSelectedDriver(null);
+          }}
+        />
+      </Modal>
     </div>
   );
 }

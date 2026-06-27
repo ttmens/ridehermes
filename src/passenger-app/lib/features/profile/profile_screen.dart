@@ -42,6 +42,15 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.xxl),
             _settingItem(Icons.person, '个人信息'),
             _settingItem(Icons.smart_toy, '智能体授权', onTap: () => context.push('/agent-auth')),
+            _settingItem(Icons.subscriptions, '我的订阅', onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('订阅功能即将上线，敬请期待！'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }),
+            _settingItem(Icons.event_repeat, '周期性出行', onTap: () => context.push('/recurring-trips')),
             _settingItem(Icons.settings, '行程偏好'),
             _settingItem(Icons.help_outline, '帮助与反馈'),
             _settingItem(Icons.info_outline, '关于我们'),

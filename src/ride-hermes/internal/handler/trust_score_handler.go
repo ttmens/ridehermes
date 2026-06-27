@@ -23,7 +23,10 @@ func (h *Handler) GetDriverTrustScore(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, ts)
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
+		"data": ts,
+	})
 }
 
 // GetDriverEvaluations 司机查询评价历史
@@ -45,8 +48,11 @@ func (h *Handler) GetDriverEvaluations(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"evaluations": evals,
-		"count":       len(evals),
+		"code": 0,
+		"data": gin.H{
+			"evaluations": evals,
+			"count":       len(evals),
+		},
 	})
 }
 
@@ -60,8 +66,11 @@ func (h *Handler) AdminListTrustScores(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"total":  len(scores),
-		"scores": scores,
+		"code": 0,
+		"data": gin.H{
+			"total":  len(scores),
+			"scores": scores,
+		},
 	})
 }
 
@@ -75,7 +84,42 @@ func (h *Handler) AdminGetAnomalies(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"total":     len(anomalies),
-		"anomalies": anomalies,
+		"code": 0,
+		"data": gin.H{
+			"total":     len(anomalies),
+			"anomalies": anomalies,
+		},
+	})
+}
+
+// AdminAdjustTrustScore 管理员调整司机信誉分
+func (h *Handler) AdminAdjustTrustScore(c *gin.Context) {
+	driverIDStr := c.Param("driver_id")
+	driverID, err := strconv.ParseInt(driverIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的司机ID"})
+		return
+	}
+
+	var req struct {
+		NewScore int    `json:"new_score" binding:"required,min=0,max=100"`
+		Reason   string `json:"reason" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 调用 service 层调整信誉分
+	if err := h.TrustScoreSvc.AdjustTrustScore(c.Request.Context(), driverID, req.NewScore, req.Reason); err != nil {
+		h.logger.Error("failed to adjust trust score", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "调整信誉分失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "信誉分调整成功",
 	})
 }

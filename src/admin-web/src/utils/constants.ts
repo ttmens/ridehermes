@@ -27,3 +27,17 @@ export const USER_STATUS_MAP: Record<number, { text: string; color: string }> = 
   1: { text: '正常', color: 'green' },
   2: { text: '禁用', color: 'red' },
 };
+
+export const SUBSCRIPTION_STATUS_MAP: Record<number, { text: string; color: string }> = {
+  1: { text: '生效中', color: 'green' },
+  2: { text: '已过期', color: 'red' },
+  3: { text: '已取消', color: 'default' },
+  4: { text: '试用中', color: 'blue' },
+  5: { text: '待生效', color: 'orange' },
+};
+
+export const SUBSCRIPTION_PLAN_MAP: Record<number, { text: string }> = {
+  1: { text: '基础版' },
+  2: { text: '专业版' },
+  3: { text: '旗舰版' },
+};

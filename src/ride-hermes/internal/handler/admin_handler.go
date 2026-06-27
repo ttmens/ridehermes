@@ -247,3 +247,47 @@ func (h *Handler) AdminGetDriverLocations(c *gin.Context) {
 func (h *Handler) AdminGetPassengerLocations(c *gin.Context) {
 	common.Success(c, []interface{}{})
 }
+
+func (h *Handler) AdminListPassengers(c *gin.Context) {
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+
+	// 查询所有乘客（role=2）
+	var passengers []model.User
+	var total int64
+
+	query := h.db.Model(&model.User{}).Where("role = ?", model.RolePassenger)
+	query.Count(&total)
+
+	if err := query.Offset(offset).Limit(limit).Find(&passengers).Error; err != nil {
+		common.Error(c, common.CodeInternalError, err.Error())
+		return
+	}
+
+	common.Success(c, gin.H{
+		"list":  passengers,
+		"total": total,
+	})
+}
+
+func (h *Handler) AdminListAgents(c *gin.Context) {
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+
+	// 查询所有 Agent 凭证
+	var agents []model.AgentCredential
+	var total int64
+
+	query := h.db.Model(&model.AgentCredential{})
+	query.Count(&total)
+
+	if err := query.Offset(offset).Limit(limit).Find(&agents).Error; err != nil {
+		common.Error(c, common.CodeInternalError, err.Error())
+		return
+	}
+
+	common.Success(c, gin.H{
+		"list":  agents,
+		"total": total,
+	})
+}

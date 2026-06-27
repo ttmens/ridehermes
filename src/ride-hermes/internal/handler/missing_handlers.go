@@ -109,14 +109,18 @@ func (h *Handler) CancelSubscription(c *gin.Context) {
 	}
 	ctx := c.Request.Context()
 	sub, err := h.SubscriptionSvc.GetByID(ctx, id)
-	if err != nil || sub == nil {
+	if err != nil {
 		common.Error(c, common.CodeParamError, "subscription not found")
 		return
 	}
-	// 通过 driver_id 查询并更新状态
-	_, err = h.SubscriptionSvc.GetByDriverID(ctx, sub.DriverID)
+	if sub == nil {
+		common.Error(c, common.CodeParamError, "subscription not found")
+		return
+	}
+	// 更新订阅状态为取消
+	err = h.SubscriptionSvc.Cancel(ctx, id)
 	if err != nil {
-		common.Error(c, common.CodeParamError, "subscription not active")
+		common.Error(c, common.CodeInternalError, err.Error())
 		return
 	}
 	h.logger.Info("subscription cancelled", zap.Int64("id", id), zap.Int64("driver_id", sub.DriverID))
@@ -137,7 +141,7 @@ func (h *Handler) RenewSubscription(c *gin.Context) {
 		common.Error(c, common.CodeParamError, "subscription not found")
 		return
 	}
-	resp, err := h.SubscriptionSvc.Renew(ctx, sub.DriverID)
+	resp, err := h.SubscriptionSvc.Renew(ctx, id)
 	if err != nil {
 		common.Error(c, common.CodeParamError, err.Error())
 		return
@@ -373,4 +377,121 @@ func (h *Handler) AdminListNotifications(c *gin.Context) {
 		notifications = []gin.H{}
 	}
 	common.Success(c, gin.H{"total": len(notifications), "list": notifications})
+}
+
+// AdminGetMatchingStats 撮合监控 - 统计
+func (h *Handler) AdminGetMatchingStats(c *gin.Context) {
+	// ctx := c.Request.Context()
+	// 在线司机数
+	onlineDrivers := 0
+	// 待匹配需求数
+	var pendingDemands int64
+	h.db.Model(&model.MatchingDemand{}).Where("status = ?", 1).Count(&pendingDemands)
+	// 进行中匹配数
+	var activeMatches int64
+	h.db.Model(&model.MatchingDemand{}).Where("status = ?", 2).Count(&activeMatches)
+	// 今日匹配成功数
+	today := time.Now().Truncate(24 * time.Hour)
+	var todayMatched int64
+	h.db.Model(&model.MatchingOffer{}).Where("created_at >= ? AND status = ?", today, 2).Count(&todayMatched)
+	// 撮合成功率（已完成/总订单）
+	var totalOrders, completedOrders int64
+	h.db.Model(&model.Order{}).Count(&totalOrders)
+	h.db.Model(&model.Order{}).Where("status = ?", 7).Count(&completedOrders)
+	successRate := 0.0
+	if totalOrders > 0 {
+		successRate = float64(completedOrders) / float64(totalOrders) * 100
+	}
+	// 平均报价数/需求
+	var avgOffers float64
+	_ = h.db.Raw("SELECT COALESCE(AVG(offer_count), 0) FROM (SELECT COUNT(*) as offer_count FROM matching_offers GROUP BY demand_id) sub").Scan(&avgOffers)
+
+	common.Success(c, gin.H{
+		"online_drivers":          onlineDrivers,
+		"pending_demands":         pendingDemands,
+		"active_matches":          activeMatches,
+		"today_matched":           todayMatched,
+		"avg_response_time":       0,
+		"matching_success_rate":   successRate,
+		"avg_offers_per_demand":   avgOffers,
+	})
+}
+
+// AdminGetMatchingActivities 撮合活动列表
+func (h *Handler) AdminGetMatchingActivities(c *gin.Context) {
+	ctx := c.Request.Context()
+	limitStr := c.DefaultQuery("limit", "20")
+	limit, _ := strconv.Atoi(limitStr)
+	if limit > 100 {
+		limit = 100
+	}
+	// 从最近的撮合需求和报价构建活动
+	var demands []model.MatchingDemand
+	h.db.WithContext(ctx).Order("created_at DESC").Limit(limit).Find(&demands)
+
+	var activities []gin.H
+	for _, d := range demands {
+		action := "demand_published"
+		if d.Status == 2 {
+			action = "match_confirmed"
+		} else if d.Status == 3 {
+			action = "order_created"
+		}
+		activities = append(activities, gin.H{
+			"id":             d.ID,
+			"demand_id":      d.ID,
+			"passenger_name": "",
+			"driver_name":    "",
+			"action":         action,
+			"description":    d.PickupAddr + " → " + d.DropoffAddr,
+			"created_at":     d.CreatedAt,
+		})
+	}
+	if activities == nil {
+		activities = []gin.H{}
+	}
+	common.Success(c, gin.H{"total": len(activities), "list": activities})
+}
+
+// AdminGetMatchingDemands 待匹配需求列表
+func (h *Handler) AdminGetMatchingDemands(c *gin.Context) {
+	ctx := c.Request.Context()
+	statusStr := c.DefaultQuery("status", "pending")
+	limitStr := c.DefaultQuery("limit", "10")
+	limit, _ := strconv.Atoi(limitStr)
+	if limit > 50 {
+		limit = 50
+	}
+
+	var demands []model.MatchingDemand
+	query := h.db.WithContext(ctx).Order("created_at DESC").Limit(limit)
+
+	if statusStr == "pending" {
+		query.Where("status = ?", 1)
+	}
+
+	query.Find(&demands)
+
+	var result []gin.H
+	for _, d := range demands {
+		var offerCount int64
+		h.db.Model(&model.MatchingOffer{}).Where("demand_id = ?", d.ID).Count(&offerCount)
+
+		result = append(result, gin.H{
+			"id":              d.ID,
+			"passenger_name":  "",
+			"pickup_addr":     d.PickupAddr,
+			"dropoff_addr":    d.DropoffAddr,
+			"departure_time":  d.DepartureTime,
+			"car_type":        0,
+			"status":          "pending",
+			"offer_count":     offerCount,
+			"remaining_seconds": 30,
+			"created_at":      d.CreatedAt,
+		})
+	}
+	if result == nil {
+		result = []gin.H{}
+	}
+	common.Success(c, gin.H{"total": len(result), "list": result})
 }

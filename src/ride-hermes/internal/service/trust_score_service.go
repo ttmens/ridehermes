@@ -216,3 +216,88 @@ type AnomalyReport struct {
 func (s *TrustScoreService) GetAllTrustScores(ctx context.Context) ([]model.TrustScore, error) {
 	return s.tsRepo.FindAll(ctx)
 }
+
+// StartTrustScoreCronJobs 启动信誉分定时任务
+func (s *TrustScoreService) StartTrustScoreCronJobs(ctx context.Context) {
+	go s.runDecayCron(ctx)
+	go s.runAnomalyCron(ctx)
+}
+
+func (s *TrustScoreService) runDecayCron(ctx context.Context) {
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := s.ApplyDecay(ctx); err != nil {
+				s.logger.Error("[Cron] ApplyDecay failed", zap.Error(err))
+			} else {
+				s.logger.Info("[Cron] ApplyDecay completed")
+			}
+		}
+	}
+}
+
+func (s *TrustScoreService) runAnomalyCron(ctx context.Context) {
+	ticker := time.NewTicker(10 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			anomalies, err := s.DetectAnomalies(ctx)
+			if err != nil {
+				s.logger.Error("[Cron] DetectAnomalies failed", zap.Error(err))
+			} else {
+				s.logger.Info("[Cron] DetectAnomalies completed", zap.Int("count", len(anomalies)))
+			}
+		}
+	}
+}
+
+// AdjustTrustScore 管理员调整司机信誉分
+func (s *TrustScoreService) AdjustTrustScore(ctx context.Context, driverID int64, newScore int, reason string) error {
+	// 获取当前信誉分
+	ts, err := s.tsRepo.FindByDriverID(ctx, driverID)
+	if err != nil {
+		// 如果不存在，创建默认信誉分
+		ts = &model.TrustScore{
+			DriverID:    driverID,
+			TotalScore:  5.0,
+			Punctuality: 5.0,
+			Service:     5.0,
+			Driving:     5.0,
+			Completion:  5.0,
+		}
+		if err := s.tsRepo.Create(ctx, ts); err != nil {
+			return fmt.Errorf("创建信誉分记录失败: %w", err)
+		}
+	}
+
+	// 将新分数（0-100）转换为 5 分制（0-5）
+	newScoreFloat := float64(newScore) / 20.0
+
+	// 更新信誉分
+	updates := map[string]interface{}{
+		"total_score":  newScoreFloat,
+		"punctuality":  newScoreFloat,
+		"service":      newScoreFloat,
+		"driving":      newScoreFloat,
+		"completion":   newScoreFloat,
+	}
+
+	if err := s.tsRepo.Update(ctx, driverID, updates); err != nil {
+		return fmt.Errorf("更新信誉分失败: %w", err)
+	}
+
+	// 记录调整日志
+	s.logger.Info("管理员调整信誉分",
+		zap.Int64("driver_id", driverID),
+		zap.Int("new_score", newScore),
+		zap.String("reason", reason))
+
+	return nil
+}

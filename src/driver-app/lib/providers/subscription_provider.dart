@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/api_service.dart';
+import 'services_provider.dart';
 
 class SubscriptionPlan {
   final int type;
@@ -64,47 +65,60 @@ class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
     state = state.copyWith(isLoading: true);
 
     try {
-      // 模拟套餐数据（实际应从API获取）
-      final plans = [
-        SubscriptionPlan(
-          type: 1,
-          name: '基础版',
-          monthlyFee: 299,
-          revenueRate: 0.03,
-          benefits: [
-            '基础撮合服务',
-            '标准订单匹配',
-            '基础数据分析',
-          ],
-        ),
-        SubscriptionPlan(
-          type: 2,
-          name: '专业版',
-          monthlyFee: 499,
-          revenueRate: 0.05,
-          benefits: [
-            '优先撮合服务',
-            '智能订单推荐',
-            '详细数据分析',
-            '专属客服支持',
-          ],
-        ),
-        SubscriptionPlan(
-          type: 3,
-          name: '旗舰版',
-          monthlyFee: 799,
-          revenueRate: 0.06,
-          benefits: [
-            '最高优先级撮合',
-            'AI智能调度',
-            '全维度数据分析',
-            '专属客户经理',
-            '定制化服务',
-          ],
-        ),
-      ];
+      // 从API获取套餐列表（公开接口，无需认证）
+      final response = await _apiService.authGet('/api/v1/subscriptions/plans');
+      
+      if (response != null && response['plans'] != null) {
+        final plansData = List<Map<String, dynamic>>.from(response['plans']);
+        
+        // 为每个套餐添加benefits（因为后端没有存储benefits）
+        final plans = plansData.map((plan) {
+          final type = plan['type'] ?? 0;
+          List<String> benefits;
+          
+          // 根据套餐类型添加对应的benefits
+          switch (type) {
+            case 1: // Basic
+              benefits = [
+                '基础撮合服务',
+                '标准订单匹配',
+                '基础数据分析',
+              ];
+              break;
+            case 2: // Pro
+              benefits = [
+                '优先撮合服务',
+                '智能订单推荐',
+                '详细数据分析',
+                '专属客服支持',
+              ];
+              break;
+            case 3: // Premium
+              benefits = [
+                '最高优先级撮合',
+                'AI智能调度',
+                '全维度数据分析',
+                '专属客户经理',
+                '定制化服务',
+              ];
+              break;
+            default:
+              benefits = ['基础服务'];
+          }
+          
+          return SubscriptionPlan(
+            type: type,
+            name: plan['name'] ?? '',
+            monthlyFee: (plan['monthly_fee'] ?? 0).toDouble(),
+            revenueRate: (plan['revenue_rate'] ?? 0).toDouble(),
+            benefits: benefits,
+          );
+        }).toList();
 
-      state = state.copyWith(isLoading: false, plans: plans);
+        state = state.copyWith(isLoading: false, plans: plans);
+      } else {
+        state = state.copyWith(isLoading: false, error: '无法获取套餐列表');
+      }
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
@@ -112,7 +126,7 @@ class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
 
   Future<void> loadCurrentSubscription() async {
     try {
-      final response = await _apiService.get('/driver/subscriptions');
+      final response = await _apiService.authGet('/driver/subscriptions');
       if (response != null) {
         state = state.copyWith(currentSubscription: response);
       }
@@ -125,7 +139,7 @@ class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
     state = state.copyWith(isLoading: true);
 
     try {
-      final response = await _apiService.post(
+      final response = await _apiService.authPost(
         '/driver/subscriptions',
         data: {'plan_type': planType},
       );
@@ -148,7 +162,7 @@ class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
     state = state.copyWith(isLoading: true);
 
     try {
-      final response = await _apiService.post(
+      final response = await _apiService.authPost(
         '/driver/subscriptions/cancel',
         data: {},
       );

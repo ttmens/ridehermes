@@ -112,8 +112,40 @@ export default function SubscriptionDashboard() {
 
       if (statsData) setStats(statsData);
       if (Array.isArray(trendData)) setTrend(trendData);
-      if (Array.isArray(planData)) setPlanDist(planData);
-      if (recentData?.list) setRecentSubs(recentData.list);
+      
+      // 套餐分布：后端返回 [{plan, count}] 格式
+      if (Array.isArray(planData)) {
+        // 计算百分比
+        const total = planData.reduce((sum: number, p: any) => sum + (p.count ?? 0), 0);
+        const withPct = planData.map((p: any) => ({
+          ...p,
+          percentage: total > 0 ? Math.round(((p.count ?? 0) / total) * 100) : 0,
+        }));
+        setPlanDist(withPct);
+      }
+      
+      // 最近订阅：后端返回 data.subscriptions
+      if (recentData?.subscriptions) {
+        const recentList = recentData.subscriptions.slice(0, 5).map((s: any) => ({
+          id: s.id,
+          driver_id: s.driver_id,
+          driver_name: s.driver?.real_name ?? s.driver_name ?? `司机 #${s.driver_id}`,
+          driver_phone: s.driver?.user?.phone ?? '',
+          plan_type: s.plan_type,
+          plan: s.plan_type,
+          plan_name: s.plan_name ?? '',
+          price: s.monthly_fee ?? 0,
+          status: s.status,
+          start_date: s.start_date,
+          end_date: s.expire_date ?? s.end_date,
+          expire_date: s.expire_date,
+          auto_renew: s.auto_renew ?? false,
+          created_at: s.created_at,
+        }));
+        setRecentSubs(recentList);
+      } else if (recentData?.list) {
+        setRecentSubs(recentData.list);
+      }
     } finally {
       setLoading(false);
     }

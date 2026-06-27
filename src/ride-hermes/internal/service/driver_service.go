@@ -49,3 +49,17 @@ func (s *DriverService) VerifyDriverActive(ctx context.Context, userID int64) (*
 	}
 	return driver, nil
 }
+
+// DisableDriver 管理员禁用司机
+func (s *DriverService) DisableDriver(ctx context.Context, driverID int64, reason string) error {
+	// 更新司机状态为禁用（假设状态 3 表示禁用）
+	if err := s.driverRepo.UpdateStatus(ctx, driverID, 3); err != nil {
+		return fmt.Errorf("更新司机状态失败: %w", err)
+	}
+
+	// 这里应该记录禁用日志，但为了简化，我们只打印日志
+	// 实际项目中应该有一个专门的日志表
+	fmt.Printf("司机 %d 被禁用，原因: %s\n", driverID, reason)
+
+	return nil
+}

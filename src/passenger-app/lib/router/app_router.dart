@@ -12,8 +12,8 @@ import 'package:ride_hermes_passenger/features/profile/profile_screen.dart';
 import 'package:ride_hermes_passenger/features/schedule_trip/schedule_trip_screen.dart';
 import 'package:ride_hermes_passenger/features/home/ai_chat_screen.dart';
 import 'package:ride_hermes_passenger/features/agent_auth/agent_auth_screen.dart';
-import 'package:ride_hermes_passenger/screens/plan_trip_screen.dart';
-import 'package:ride_hermes_passenger/screens/recurring_trips_screen.dart';
+import 'package:ride_hermes_passenger/features/plan_trip/plan_trip_screen.dart';
+import 'package:ride_hermes_passenger/features/recurring_trips/recurring_trips_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);

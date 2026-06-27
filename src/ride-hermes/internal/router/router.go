@@ -84,6 +84,9 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client, hub *ws.Hub) *gin
 		auth.POST("/refresh", h.AuthRefresh)
 	}
 
+	// Public subscription plans (no auth required)
+	r.GET("/api/v1/subscriptions/plans", h.GetSubscriptionPlans)
+
 	// WebSocket
 	r.GET("/ws/location", h.HandleWebSocket)
 
@@ -117,9 +120,26 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client, hub *ws.Hub) *gin
 		admin.POST("/enterprises/:id/employees", h.AdminAddEnterpriseEmployee)
 		admin.GET("/enterprises/:id/bill", h.AdminGetEnterpriseBill)
 		admin.GET("/subscriptions/stats", h.GetGlobalSubscriptionStats)
-		admin.GET("/subscriptions/:driver_id/stats", h.GetSubscriptionByDriver)
+		admin.GET("/subscriptions/trend", h.GetSubscriptionTrend)
+		admin.GET("/subscriptions/plans/distribution", h.GetPlanDistribution)
+		admin.POST("/subscriptions/:id/cancel", h.CancelSubscription)
+		admin.POST("/subscriptions/:id/renew", h.RenewSubscription)
+		admin.GET("/subscriptions/driver/:driver_id/stats", h.GetSubscriptionByDriver)
+		admin.GET("/subscriptions/driver/:driver_id/monthly-orders", h.GetDriverMonthlyOrders)
+		admin.GET("/trust-scores/stats", h.GetTrustScoreStats)
+		admin.POST("/trust-scores/anomalies/:id/handle", h.HandleAnomaly)
+		admin.GET("/enterprises/:id/orders", h.AdminGetEnterpriseOrders)
 		admin.GET("/agents/logs", h.AdminListAgentLogs)
 		admin.GET("/notifications", h.AdminListNotifications)
+		admin.GET("/passengers", h.AdminListPassengers)
+		admin.GET("/agents", h.AdminListAgents)
+		// 新增：调整信誉分和禁用司机
+		admin.POST("/trust-scores/:driver_id/adjust", h.AdminAdjustTrustScore)
+		admin.POST("/drivers/:driver_id/disable", h.AdminDisableDriver)
+		// 撮合监控
+		admin.GET("/matching/stats", h.AdminGetMatchingStats)
+		admin.GET("/matching/activities", h.AdminGetMatchingActivities)
+		admin.GET("/matching/demands", h.AdminGetMatchingDemands)
 	}
 
 	// Passenger routes
@@ -171,6 +191,11 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client, hub *ws.Hub) *gin
 		driver.GET("/evaluations", h.GetDriverEvaluations)
 		driver.GET("/user/profile", h.GetProfile)
 		driver.PUT("/user/profile", h.UpdateProfile)
+		// Agent 配置（接单偏好/定价策略/在线时间）
+		driver.GET("/agent/config", h.DriverGetAgentConfig)
+		driver.POST("/agent/preferences", h.DriverSaveAgentPreferences)
+		driver.POST("/agent/pricing", h.DriverSaveAgentPricing)
+		driver.POST("/agent/schedule", h.DriverSaveAgentSchedule)
 	}
 
 	// Agent routes (X-API-Key + X-User-ID auth)
@@ -209,6 +234,10 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client, hub *ws.Hub) *gin
 		mapRoutes.GET("/static", mapHandler.StaticMap)
 		mapRoutes.GET("/route", mapHandler.RoutePlan)
 	}
+
+	// Start Cron Jobs
+	subscriptionSvc.StartCronJobs(context.Background())
+	trustScoreSvc.StartTrustScoreCronJobs(context.Background())
 
 	return r
 }

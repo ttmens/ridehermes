@@ -10,6 +10,7 @@ import {
   LogoutOutlined,
   PlusOutlined,
   KeyOutlined,
+  SwapOutlined,
   HomeOutlined,
   CrownOutlined,
   BankOutlined,
@@ -42,6 +43,7 @@ const menuItems = [
   },
   { key: '/order', icon: <FileTextOutlined />, label: '订单管理' },
   { key: '/subscription', icon: <CrownOutlined />, label: '订阅管理' },
+  { key: '/matching', icon: <SwapOutlined />, label: '撮合监控' },
   { key: '/enterprise', icon: <BankOutlined />, label: '企业客户' },
   { key: '/trust-scores', icon: <SafetyCertificateOutlined />, label: '信誉看板' },
   { key: '/notifications', icon: <BellOutlined />, label: '推送通知' },
@@ -64,6 +66,7 @@ const breadcrumbMap: Record<string, string> = {
   '/notifications': '推送通知',
   '/monitor': '实时监控',
   '/agents': '智能体管理',
+  '/matching': '撮合监控',
 };
 
 function getBreadcrumbItems(pathname: string) {

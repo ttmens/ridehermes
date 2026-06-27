@@ -24,5 +24,6 @@ func AutoMigrate(db *gorm.DB) error {
 		&EnterpriseCustomer{},
 		&EnterpriseEmployee{},
 		&RecurringTrip{},
+		&Notification{},
 	)
 }

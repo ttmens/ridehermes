@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../providers/recurring_trip_provider.dart';
-import '../theme/app_theme.dart';
+import '../../providers/recurring_trip_provider.dart';
+import '../../theme/app_theme.dart';
+import '../../shared/widgets/address_input.dart';
 
 class RecurringTripsScreen extends ConsumerStatefulWidget {
   const RecurringTripsScreen({super.key});
@@ -329,6 +330,12 @@ class _CreateRecurringTripDialogState extends State<CreateRecurringTripDialog> {
   final _pickupController = TextEditingController();
   final _dropoffController = TextEditingController();
 
+  // Store resolved coordinates from AddressInput
+  double _pickupLat = 0.0;
+  double _pickupLng = 0.0;
+  double _dropoffLat = 0.0;
+  double _dropoffLng = 0.0;
+
   @override
   void dispose() {
     _pickupController.dispose();
@@ -385,24 +392,44 @@ class _CreateRecurringTripDialogState extends State<CreateRecurringTripDialog> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text('起点', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            TextField(
+            AddressInput(
+              label: '起点',
+              hint: '搜索上车地点',
+              icon: Icons.location_on,
+              iconColor: Colors.green,
               controller: _pickupController,
-              decoration: const InputDecoration(
-                hintText: '输入起点地址',
-                border: OutlineInputBorder(),
-              ),
+              onPlaceSelected: (place) {
+                final location = place['location'] as String?;
+                if (location != null && location.contains(',')) {
+                  final parts = location.split(',');
+                  if (parts.length == 2) {
+                    setState(() {
+                      _pickupLng = double.tryParse(parts[0]) ?? 0.0;
+                      _pickupLat = double.tryParse(parts[1]) ?? 0.0;
+                    });
+                  }
+                }
+              },
             ),
             const SizedBox(height: 16),
-            const Text('终点', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            TextField(
+            AddressInput(
+              label: '终点',
+              hint: '搜索下车地点',
+              icon: Icons.flag,
+              iconColor: Colors.red,
               controller: _dropoffController,
-              decoration: const InputDecoration(
-                hintText: '输入终点地址',
-                border: OutlineInputBorder(),
-              ),
+              onPlaceSelected: (place) {
+                final location = place['location'] as String?;
+                if (location != null && location.contains(',')) {
+                  final parts = location.split(',');
+                  if (parts.length == 2) {
+                    setState(() {
+                      _dropoffLng = double.tryParse(parts[0]) ?? 0.0;
+                      _dropoffLat = double.tryParse(parts[1]) ?? 0.0;
+                    });
+                  }
+                }
+              },
             ),
           ],
         ),
@@ -421,6 +448,14 @@ class _CreateRecurringTripDialogState extends State<CreateRecurringTripDialog> {
               return;
             }
 
+            if (_pickupLat == 0.0 || _pickupLng == 0.0 ||
+                _dropoffLat == 0.0 || _dropoffLng == 0.0) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('请从搜索结果中选择起点和终点')),
+              );
+              return;
+            }
+
             Navigator.pop(context, {
               'trip_type': _tripType,
               'departure_time':
@@ -428,10 +463,10 @@ class _CreateRecurringTripDialogState extends State<CreateRecurringTripDialog> {
               'days_of_week': _selectedDays.join(','),
               'pickup_addr': _pickupController.text,
               'dropoff_addr': _dropoffController.text,
-              'pickup_lat': 0.0,
-              'pickup_lng': 0.0,
-              'dropoff_lat': 0.0,
-              'dropoff_lng': 0.0,
+              'pickup_lat': _pickupLat,
+              'pickup_lng': _pickupLng,
+              'dropoff_lat': _dropoffLat,
+              'dropoff_lng': _dropoffLng,
               'car_type': 1,
               'start_date': DateTime.now().toIso8601String(),
               'end_date': DateTime.now().add(const Duration(days: 365)).toIso8601String(),

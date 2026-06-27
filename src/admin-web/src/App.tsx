@@ -15,6 +15,7 @@ const DriverDetail = lazy(() => import('@/pages/drivers/DriverDetail'));
 const OrderList = lazy(() => import('@/pages/orders/OrderList'));
 const OrderDetail = lazy(() => import('@/pages/orders/OrderDetail'));
 const MonitorPage = lazy(() => import('@/pages/map/MonitorPage'));
+const MatchingMonitorPage = lazy(() => import('@/pages/match/MatchingMonitorPage'));
 const AgentPage = lazy(() => import('@/pages/AgentManagement'));
 const SubscriptionDashboard = lazy(() => import('@/pages/subscriptions/SubscriptionDashboard'));
 const SubscriptionList = lazy(() => import('@/pages/subscriptions/SubscriptionList'));
@@ -63,6 +64,7 @@ export default function App() {
           <Route path="order" element={<OrderList />} />
           <Route path="order/:id" element={<OrderDetail />} />
           <Route path="monitor" element={<MonitorPage />} />
+          <Route path="matching" element={<MatchingMonitorPage />} />
           <Route path="agents" element={<AgentPage />} />
           <Route path="subscription" element={<SubscriptionList />} />
           <Route path="subscription/dashboard" element={<SubscriptionDashboard />} />

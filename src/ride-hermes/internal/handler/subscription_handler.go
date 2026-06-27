@@ -36,7 +36,10 @@ func (h *Handler) CreateSubscription(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
+		"data": resp,
+	})
 }
 
 // GetDriverSubscription 查询司机订阅
@@ -49,12 +52,24 @@ func (h *Handler) GetDriverSubscription(c *gin.Context) {
 
 	sub, err := h.SubscriptionSvc.GetByDriverID(c.Request.Context(), driverID)
 	if err != nil {
+		// 如果没有订阅，返回空数据而不是错误
+		if err.Error() == "record not found" || err.Error() == "未找到有效订阅" {
+			c.JSON(http.StatusOK, gin.H{
+				"code": 0,
+				"data": nil,
+				"message": "暂无订阅",
+			})
+			return
+		}
 		h.logger.Error("failed to get subscription", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询订阅失败"})
 		return
 	}
 
-	c.JSON(http.StatusOK, sub)
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
+		"data": sub,
+	})
 }
 
 // ListSubscriptions 管理员查询所有订阅
@@ -75,7 +90,10 @@ func (h *Handler) ListSubscriptions(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"total":         total,
-		"subscriptions": subs,
+		"code": 0,
+		"data": gin.H{
+			"total":         total,
+			"subscriptions": subs,
+		},
 	})
 }

@@ -45,7 +45,27 @@ export default function SubscriptionList() {
       }
 
       const resp = await api.get('/admin/subscriptions', { params });
-      setSubscriptions(resp.data?.list ?? []);
+      // 后端返回 data.subscriptions，前端需要映射字段名
+      const rawList = resp.data?.subscriptions ?? resp.data?.list ?? [];
+      const mapped = rawList.map((s: any) => ({
+        id: s.id,
+        driver_id: s.driver_id,
+        driver_name: s.driver?.real_name ?? s.driver_name ?? `司机 #${s.driver_id}`,
+        driver_phone: s.driver?.user?.phone ?? s.driver_phone ?? '',
+        plan_type: s.plan_type,
+        plan: s.plan_type,
+        plan_name: s.plan_name ?? '',
+        price: s.monthly_fee ?? s.price ?? 0,
+        monthly_fee: s.monthly_fee,
+        status: s.status,
+        start_date: s.start_date,
+        end_date: s.expire_date ?? s.end_date,
+        expire_date: s.expire_date,
+        auto_renew: s.auto_renew ?? false,
+        created_at: s.created_at,
+        updated_at: s.updated_at,
+      }));
+      setSubscriptions(mapped);
       setTotal(resp.data?.total ?? 0);
     } catch {
       // error handled by interceptor

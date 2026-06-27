@@ -97,10 +97,13 @@ func (s *SubscriptionService) Create(ctx context.Context, req *CreateRequest) (*
 }
 
 // Renew 续费订阅
-func (s *SubscriptionService) Renew(ctx context.Context, driverID int64) (*CreateResponse, error) {
-	sub, err := s.subRepo.FindByDriverID(ctx, driverID)
+func (s *SubscriptionService) Renew(ctx context.Context, subscriptionID int64) (*CreateResponse, error) {
+	sub, err := s.subRepo.FindByID(ctx, subscriptionID)
 	if err != nil {
-		return nil, fmt.Errorf("未找到有效订阅")
+		return nil, fmt.Errorf("未找到订阅")
+	}
+	if sub == nil {
+		return nil, fmt.Errorf("订阅不存在")
 	}
 
 	planConfig, ok := model.PlanConfigs[sub.PlanType]
@@ -127,7 +130,7 @@ func (s *SubscriptionService) Renew(ctx context.Context, driverID int64) (*Creat
 	// 记录续费支付
 	payment := &model.SubscriptionPayment{
 		SubscriptionID: sub.ID,
-		DriverID:       driverID,
+		DriverID:       sub.DriverID,
 		Amount:         planConfig.MonthlyFee,
 		PlanType:       sub.PlanType,
 		Status:         model.PaymentStatusSuccess,
@@ -144,6 +147,26 @@ func (s *SubscriptionService) Renew(ctx context.Context, driverID int64) (*Creat
 		RevenueRate:    sub.RevenueRate,
 		ExpireDate:     newExpireDate.Format("2006-01-02"),
 	}, nil
+}
+
+// Cancel 取消订阅
+func (s *SubscriptionService) Cancel(ctx context.Context, subscriptionID int64) error {
+	sub, err := s.subRepo.FindByID(ctx, subscriptionID)
+	if err != nil {
+		return fmt.Errorf("未找到订阅记录")
+	}
+	if sub == nil {
+		return fmt.Errorf("订阅不存在")
+	}
+
+	err = s.subRepo.Update(ctx, subscriptionID, map[string]interface{}{
+		"status": model.SubscriptionStatusCancelled,
+	})
+	if err != nil {
+		return fmt.Errorf("取消订阅失败: %w", err)
+	}
+
+	return nil
 }
 
 // GetByDriverID 查询司机当前有效订阅

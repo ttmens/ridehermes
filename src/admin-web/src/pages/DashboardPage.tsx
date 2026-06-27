@@ -9,6 +9,8 @@ import {
   PlusOutlined,
   RiseOutlined,
   DollarOutlined,
+  SafetyCertificateOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import api from '@/services/api';
@@ -22,6 +24,10 @@ interface DashboardStats {
   pendingOrders: number;
   totalPassengers: number;
   totalDrivers: number;
+  monthlyRevenue: number;
+  lastMonthRevenue: number;
+  matchingSuccessRate: number;
+  pendingAnomalies: number;
 }
 
 const statCardStyle = (borderColor: string): React.CSSProperties => ({
@@ -35,6 +41,8 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalOrders: 0, todayOrders: 0, onlineDrivers: 0,
     pendingOrders: 0, totalPassengers: 0, totalDrivers: 0,
+    monthlyRevenue: 0, lastMonthRevenue: 0,
+    matchingSuccessRate: 0, pendingAnomalies: 0,
   });
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +55,7 @@ export default function DashboardPage() {
     setLoading(true);
     try {
       const today = dayjs().format('YYYY-MM-DD');
-      const [ordersRes, onlineRes, pendingRes, passengersRes, recentRes, driversRes, todayOrdersRes] = await Promise.allSettled([
+      const [ordersRes, onlineRes, pendingRes, passengersRes, recentRes, driversRes, todayOrdersRes, subscriptionStatsRes, trustScoreStatsRes] = await Promise.allSettled([
         api.get('/admin/orders', { params: { offset: 0, limit: 1 } }),
         api.get('/admin/locations/drivers'),
         api.get('/admin/orders', { params: { status: 1, offset: 0, limit: 1 } }),
@@ -55,6 +63,8 @@ export default function DashboardPage() {
         api.get('/admin/orders', { params: { offset: 0, limit: 5 } }),
         api.get('/admin/users', { params: { role: 3, offset: 0, limit: 1 } }),
         api.get('/admin/orders', { params: { offset: 0, limit: 1, created_after: today } }),
+        api.get('/admin/subscriptions/stats'),
+        api.get('/admin/trust-scores/stats'),
       ]);
 
       const getData = (result: PromiseSettledResult<any>) =>
@@ -67,14 +77,25 @@ export default function DashboardPage() {
       const recentData = getData(recentRes);
       const driversData = getData(driversRes);
       const todayData = getData(todayOrdersRes);
+      const subscriptionStatsData = getData(subscriptionStatsRes);
+      const trustScoreStatsData = getData(trustScoreStatsRes);
+
+      // 计算撮合成功率（已完成订单 / 总订单）
+      const totalOrders = ordersData?.total ?? 0;
+      const completedOrders = recentData?.list?.filter((o: any) => o.status === 7).length ?? 0;
+      const matchingSuccessRate = totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0;
 
       setStats({
-        totalOrders: ordersData?.total ?? 0,
+        totalOrders,
         todayOrders: todayData?.total ?? 0,
         onlineDrivers: Array.isArray(onlineData) ? onlineData.length : 0,
         pendingOrders: pendingData?.total ?? 0,
         totalPassengers: passengersData?.total ?? 0,
         totalDrivers: driversData?.total ?? 0,
+        monthlyRevenue: subscriptionStatsData?.monthly_revenue ?? 0,
+        lastMonthRevenue: 0, // TODO: 需要后端提供上月数据
+        matchingSuccessRate,
+        pendingAnomalies: trustScoreStatsData?.pending_anomaly_count ?? 0,
       });
       setRecentOrders(recentData?.list ?? []);
     } finally {
@@ -114,6 +135,33 @@ export default function DashboardPage() {
             onClick={() => navigate('/passenger')} hoverable>
             <Statistic title="乘客总数" value={stats.totalPassengers}
               prefix={<TeamOutlined />} valueStyle={{ color: colors.textPrimary }} />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 核心业务指标 */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col span={8}>
+          <Card loading={loading} style={statCardStyle(colors.success)}
+            onClick={() => navigate('/subscription/dashboard')} hoverable>
+            <Statistic title="本月订阅收入" value={stats.monthlyRevenue}
+              prefix={<DollarOutlined />} valueStyle={{ color: colors.success }}
+              suffix="元" precision={2} />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card loading={loading} style={statCardStyle(colors.primary)} hoverable>
+            <Statistic title="撮合成功率" value={stats.matchingSuccessRate}
+              prefix={<RiseOutlined />} valueStyle={{ color: colors.primary }}
+              suffix="%" precision={1} />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card loading={loading} style={statCardStyle(colors.error)}
+            onClick={() => navigate('/trust-scores')} hoverable>
+            <Statistic title="待处理异常" value={stats.pendingAnomalies}
+              prefix={<WarningOutlined />} valueStyle={{ color: colors.error }}
+              suffix="条" />
           </Card>
         </Col>
       </Row>

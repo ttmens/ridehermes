@@ -49,7 +49,13 @@ func (h *Handler) AdminListEnterprises(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询企业列表失败"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"total": len(list), "enterprises": list})
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
+		"data": gin.H{
+			"total": len(list),
+			"enterprises": list,
+		},
+	})
 }
 
 func (h *Handler) AdminGetEnterprise(c *gin.Context) {
